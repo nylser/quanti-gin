@@ -76,10 +76,15 @@ def read_data_file(file_path: PathLike):
 
 
 def generate_min_local_distance_edges(vertices: np.ndarray):
-    """
-    input: vertices: np.ndarray
-    A locally optimal solution to the edge generation problem where it always considers the next possible shortest edge.
+    """A locally optimal solution to the edge generation problem where it always considers the next possible shortest edge.
+
     Warning: This always depends on the order of the vertices, so the result may vary.
+
+    Args:
+        vertices: All vertices in the graph
+
+    Returns
+        A list of edges that make sure each vertex is connected to another vertex with the shortest possible edge.
     """
     all_edges = []
     done = set()
