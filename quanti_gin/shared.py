@@ -78,8 +78,8 @@ def read_data_file(file_path: PathLike):
 def generate_min_local_distance_edges(vertices: np.ndarray):
     """
     input: vertices: np.ndarray
-    is a locally optimal solution to the edge generation problem
-
+    A locally optimal solution to the edge generation problem where it always considers the next possible shortest edge.
+    Warning: This always depends on the order of the vertices, so the result may vary.
     """
     all_edges = []
     done = set()
@@ -109,6 +109,11 @@ def generate_min_local_distance_edges(vertices: np.ndarray):
 
 
 def generate_min_global_distance_edges(vertices: np.ndarray):
+    """
+    input: vertices: np.ndarray
+    A globally optimal solution to the edge generation problem.
+    It will consider all possible start points for the optimization and return the one with the total minimum edge length.
+    """
     all_edges = []
     all_edge_lengths = []
     for i in range(len(vertices)):
