@@ -13,15 +13,11 @@ import numpy as np
 from dataclasses import dataclass, field
 from random import Random
 
-from multiprocessing import Pool
-
 from quanti_gin.shared import (
     generate_min_local_distance_edges,
     generate_min_global_distance_edges,
 )
 
-# get current file directory
-current_dir = os.path.dirname(os.path.abspath(__file__))
 
 # static seed for development
 seed = None
@@ -406,7 +402,6 @@ def evaluate_data(hcb_energy, exact_energy, edge_distances):
     error = abs(hcb_energy - exact_energy) * 1000
     error = map_error_to_class(error)
 
-    print(f"class {error}, min {np.min(edge_distances)}, max {np.max(edge_distances)}")
     return error
 
 
@@ -427,6 +422,12 @@ def main():
     )
     parser.add_argument(
         "--output", "-O", type=str, required=False, help="output file name"
+    )
+    parser.add_argument(
+        "--evaluate",
+        "-E",
+        action="store_true",
+        help="evaluate the results based on the error class distribution",
     )
 
     args = parser.parse_args()
@@ -456,8 +457,11 @@ def main():
 
     job_results = DataGenerator.execute_jobs(jobs)
 
-    for job, result in zip(jobs, job_results):
-        evaluations.append(evaluate_data(result[3], result[4], job.edge_distances))
+    if args.evaluate:
+        for job, result in zip(jobs, job_results):
+            evaluations.append(evaluate_data(result[3], result[4], job.edge_distances))
+        print("error class distribution:")
+        print(pd.Series(evaluations).value_counts())
 
     result_df = DataGenerator.create_result_df(jobs, job_results)
 
@@ -468,9 +472,7 @@ def main():
             filename = (
                 f"custom_{args.custom_job_generator}_{number_of_atoms}_{len(jobs)}.csv"
             )
-
-        path = os.path.join(current_dir, "..", "data", filename)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        path = filename
 
     result_df.to_csv(path)
 

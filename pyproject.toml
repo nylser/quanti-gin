@@ -1,10 +1,11 @@
 [tool.poetry]
 name = "quanti-gin"
-version = "0.1.0"
+version = "0.2.0"
 description = "A customizable data generator for quantum simulation"
 authors = ["Korbinian Stein <kstein@inforbi.de>"]
 license = "MIT"
 readme = "README.md"
+repository = "https://github.com/nylser/quanti-gin"
 packages = [{include = "quanti_gin"}]
 
 [tool.poetry.dependencies]
@@ -12,6 +13,8 @@ python = "3.10.*"
 tequila-basic = "^1.9.5"
 numpy = "^1.26.4"
 pandas = "^2.2.2"
+pyscf = "^2.6.0"
+qulacs = "^0.6.4.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"

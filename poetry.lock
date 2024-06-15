@@ -989,6 +989,44 @@ files = [
 diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
+name = "pyscf"
+version = "2.6.0"
+description = "PySCF: Python-based Simulations of Chemistry Framework"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pyscf-2.6.0-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:f6c191b077643b53f92ab98255a9d158103174039e0897c17d01c7c0583af093"},
+    {file = "pyscf-2.6.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:132128d1f6ac2069e9c504d3ed72346af37a68f868ea42e31aac88e857b073d7"},
+    {file = "pyscf-2.6.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:727b200ed45ab9aca08c7be88971899fdf5190ea25cee017a817400353cdea82"},
+    {file = "pyscf-2.6.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2d8945187f2f766dfc29411727b0cd772778f682979043688f98b32162cbbd47"},
+    {file = "pyscf-2.6.0.tar.gz", hash = "sha256:08ff920fedd4b257273d235fb4492535147c1e3154de5ab02b5446de93e200d8"},
+]
+
+[package.dependencies]
+h5py = ">=2.7"
+numpy = ">=1.13,<1.16 || >1.16,<1.17 || >1.17"
+scipy = "<1.5.0 || >1.5.0,<1.5.1 || >1.5.1"
+setuptools = "*"
+
+[package.extras]
+all = ["pyscf[bse,cppe,dispersion,doci,forge,geomopt,properties,pyqmc,semiempirical]"]
+bse = ["basis-set-exchange"]
+cornell-shci = ["pyscf-cornell-shci"]
+cppe = ["cppe"]
+dispersion = ["pyscf-dispersion"]
+doci = ["pyscf-doci"]
+fciqmcscf = ["pyscf-fciqmc"]
+forge = ["pyscf-forge"]
+geomopt = ["geometric (>=0.9.7.2)", "pyberny (>=0.6.2)", "pyscf-qsdopt"]
+icmpspt = ["pyscf-icmpspt"]
+nao = ["pyscf-nao"]
+properties = ["pyscf-properties"]
+pyqmc = ["pyqmc"]
+semiempirical = ["pyscf-semiempirical"]
+shciscf = ["pyscf-shciscf"]
+tblis = ["pyscf-tblis"]
+
+[[package]]
 name = "pytest"
 version = "8.2.2"
 description = "pytest: simple powerful testing with Python"
@@ -1034,6 +1072,44 @@ files = [
     {file = "pytz-2024.1-py2.py3-none-any.whl", hash = "sha256:328171f4e3623139da4983451950b28e95ac706e13f3f2630a879749e7a8b319"},
     {file = "pytz-2024.1.tar.gz", hash = "sha256:2a29735ea9c18baf14b448846bde5a48030ed267578472d8955cd0e7443a9812"},
 ]
+
+[[package]]
+name = "qulacs"
+version = "0.6.4.1"
+description = "Quantum circuit simulator for research"
+optional = false
+python-versions = "*"
+files = [
+    {file = "qulacs-0.6.4.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:a6f582debb716ea4bb9493b3250fb0d58a51acf534b4db9d16c06d87b01f28a5"},
+    {file = "qulacs-0.6.4.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:e9d66c7061075157f76b11639914b4f71db1805323d4ccbbc9c9671c24278d98"},
+    {file = "qulacs-0.6.4.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:61e6d1fc8f00185a7498b8b37756f175623a429d00147c86c4337bd45ebbc387"},
+    {file = "qulacs-0.6.4.1-cp310-cp310-win_amd64.whl", hash = "sha256:cad1c1a018b944be5a1459ba5a01e0a050a0ad767bbe2c988eac96559e625920"},
+    {file = "qulacs-0.6.4.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:50764d16dac2b9b2b5befb34859aec1fe96144149f2637afacd358d2b831bef4"},
+    {file = "qulacs-0.6.4.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:587e6540f490d0a2f075a8b88f971864802f864835eb6b54168df2f66eaf77df"},
+    {file = "qulacs-0.6.4.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:03bee026f96700ecc8ac35a93407fe15453888febc5ac286fb978ab8a165d565"},
+    {file = "qulacs-0.6.4.1-cp311-cp311-win_amd64.whl", hash = "sha256:89be135541e85cf0fffa550ebed63441800fb1387f10d2aa48a2315c40477e86"},
+    {file = "qulacs-0.6.4.1-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:2c9297bb3f9e213e5332f197f395843b49f847639302dd97a496852d04b19f06"},
+    {file = "qulacs-0.6.4.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:36bd983a8ce670813fe657a943e88d9c1b12faf495bd257778dc5dfec7b0c142"},
+    {file = "qulacs-0.6.4.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b6fbd1010ba09e4b3d2313378d5857fc8477487857c401631fa7c646b82eb005"},
+    {file = "qulacs-0.6.4.1-cp312-cp312-win_amd64.whl", hash = "sha256:23febdcc489c2f0f30114a20e81492b4221ca8dbbfd1f0239ba01220b898caa7"},
+    {file = "qulacs-0.6.4.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:fe18ea1b1080895a24e8861e18be432665376f5606f884822295f2293b15e7f1"},
+    {file = "qulacs-0.6.4.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b79466aa8dbee245a2693020994e122310d332fd5d793f154eb79eea2fa06f80"},
+    {file = "qulacs-0.6.4.1-cp38-cp38-win_amd64.whl", hash = "sha256:c5c1eacf6f9572ce6dfc12e1abec10c00e4f71a90c27f1babbcd9b844880c912"},
+    {file = "qulacs-0.6.4.1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:6b5e8c8990b8b55dd3a0bf4d02033d7f6c9183f8bb2f015b6a6105a79405036b"},
+    {file = "qulacs-0.6.4.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e53a03ef08a8cf43269a0277b0e7a917b56cec0374677d15249553ee1a5f4c73"},
+    {file = "qulacs-0.6.4.1-cp39-cp39-win_amd64.whl", hash = "sha256:1e7b6d8dc79275233c0dc9d5a8cefac3f55b625be6f8855e99f3769f408f4052"},
+    {file = "qulacs-0.6.4.1.tar.gz", hash = "sha256:be90b8586b6f1b2f2f806fca762f37116d02dc4fbe74d75ebfb4c6238c3bcde2"},
+]
+
+[package.dependencies]
+numpy = "*"
+scipy = "*"
+
+[package.extras]
+ci = ["black", "flake8", "isort", "mypy", "openfermion", "pybind11-stubgen", "pytest"]
+dev = ["black", "flake8", "isort", "mypy", "openfermion", "pybind11-stubgen", "pytest"]
+doc = ["breathe", "exhale", "ipykernel", "mypy", "myst-parser", "nbsphinx", "pybind11-stubgen", "sphinx (==7.*)", "sphinx-autoapi (==3.*)", "sphinx-copybutton", "sphinx-rtd-theme"]
+test = ["openfermion"]
 
 [[package]]
 name = "requests"
@@ -1238,4 +1314,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.10.*"
-content-hash = "0182ce1e19f25aa4a777b08b95956241f506a8f7ccae3c05007ec76eec07bf7e"
+content-hash = "fac49af65b15ac88a33e3d24132b5f01524f722acbebf275145dd83745a14bc5"
