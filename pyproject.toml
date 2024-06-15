@@ -18,6 +18,7 @@ qulacs = "^0.6.4.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
+pre-commit = "^3.7.1"
 
 [build-system]
 requires = ["poetry-core"]
