@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/nylser/quanti-gin/compare/v1.1.0...v1.1.1) (2024-06-15)
+
+
+### Bug Fixes
+
+* actually release to testpypi with correct token ([8c0e9bf](https://github.com/nylser/quanti-gin/commit/8c0e9bf692da112f77c9cfe4ce84f618986a9c2d))
+
 ## [1.1.0](https://github.com/nylser/quanti-gin/compare/v1.0.1...v1.1.0) (2024-06-15)
 
 
