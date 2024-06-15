@@ -28,7 +28,7 @@ jobs:
         # these if statements ensure that a publication only occurs when
         # a new release is created:
         if: ${{ steps.release.outputs.release_created }}
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         if: ${{ steps.release.outputs.release_created }}
         with:
           python-version: "3.10"
