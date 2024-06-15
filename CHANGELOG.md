@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/nylser/quanti-gin/compare/v1.0.1...v1.1.0) (2024-06-15)
+
+
+### Features
+
+* enable automated release using poetry ([f31503c](https://github.com/nylser/quanti-gin/commit/f31503c2fe28caf8a75b6324ea52552529ca2cca))
+
 ## [1.0.1](https://github.com/nylser/quanti-gin/compare/v1.0.0...v1.0.1) (2024-06-15)
 
 
