@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/nylser/quanti-gin/compare/v1.1.1...v1.1.2) (2024-06-15)
+
+
+### Documentation
+
+* more detailed README for repository ([963a1c5](https://github.com/nylser/quanti-gin/commit/963a1c54d32b109f4e8dacdfc9ba6344e8475816))
+
 ## [1.1.1](https://github.com/nylser/quanti-gin/compare/v1.1.0...v1.1.1) (2024-06-15)
 
 
