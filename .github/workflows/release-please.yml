@@ -42,6 +42,6 @@ jobs:
         if: ${{ steps.release.outputs.release_created }}
         run: |
           poetry config repositories.testpypi https://test.pypi.org/legacy/
-          poetry publish --build
+          poetry publish --build -r testpypi
         env:
-          POETRY_PYPI_TOKEN: ${{ secrets.TESTPYPI_TOKEN }}
+          POETRY_PYPI_TOKEN_TESTPYPI: ${{ secrets.TESTPYPI_TOKEN }}
