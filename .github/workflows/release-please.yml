@@ -38,10 +38,9 @@ jobs:
         with:
           poetry-version: "1.8.0"
 
-      - name: Publish to TestPyPI
+      - name: Publish to PyPI
         if: ${{ steps.release.outputs.release_created }}
         run: |
-          poetry config repositories.testpypi https://test.pypi.org/legacy/
-          poetry publish --build -r testpypi
+          poetry publish --build
         env:
           POETRY_PYPI_TOKEN_TESTPYPI: ${{ secrets.TESTPYPI_TOKEN }}
