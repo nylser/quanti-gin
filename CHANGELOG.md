@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.4](https://github.com/nylser/quanti-gin/compare/v1.1.4...v1.1.4) (2024-07-12)
+
+
+### Bug Fixes
+
+* try to fix release build ([78d09d7](https://github.com/nylser/quanti-gin/commit/78d09d7e61cc8f70429d9f741d5f62a16e77068e))
+
 ## [1.1.4](https://github.com/nylser/quanti-gin/compare/v1.1.3...v1.1.4) (2024-07-12)
 
 
