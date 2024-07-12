@@ -1,38 +1,5 @@
 # Changelog
 
-## [1.1.4](https://github.com/nylser/quanti-gin/compare/v1.1.4...v1.1.4) (2024-07-12)
-
-
-### Features
-
-* add release-please action ([1d4a1f6](https://github.com/nylser/quanti-gin/commit/1d4a1f6efe3c9fc70776c4563b610c5344939902))
-* enable automated release using poetry ([f31503c](https://github.com/nylser/quanti-gin/commit/f31503c2fe28caf8a75b6324ea52552529ca2cca))
-
-
-### Bug Fixes
-
-* actually release to testpypi with correct token ([8c0e9bf](https://github.com/nylser/quanti-gin/commit/8c0e9bf692da112f77c9cfe4ce84f618986a9c2d))
-* release process using different actions ([9791f46](https://github.com/nylser/quanti-gin/commit/9791f464e5274fd9c58889001ee258d9a6b3813c))
-* try to fix release build ([78d09d7](https://github.com/nylser/quanti-gin/commit/78d09d7e61cc8f70429d9f741d5f62a16e77068e))
-
-
-### Documentation
-
-* doc improvements for edge gen ([195b885](https://github.com/nylser/quanti-gin/commit/195b885d187daf6692d0424a9de86b39b2b8de41))
-* more detailed README for repository ([963a1c5](https://github.com/nylser/quanti-gin/commit/963a1c54d32b109f4e8dacdfc9ba6344e8475816))
-
-
-### Miscellaneous Chores
-
-* release 1.1.3 ([458ce43](https://github.com/nylser/quanti-gin/commit/458ce4369812b237e42df8209cc1a91efe0743db))
-
-## [1.1.4](https://github.com/nylser/quanti-gin/compare/v1.1.4...v1.1.4) (2024-07-12)
-
-
-### Bug Fixes
-
-* try to fix release build ([78d09d7](https://github.com/nylser/quanti-gin/commit/78d09d7e61cc8f70429d9f741d5f62a16e77068e))
-
 ## [1.1.4](https://github.com/nylser/quanti-gin/compare/v1.1.3...v1.1.4) (2024-07-12)
 
 
