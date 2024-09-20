@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-import os
+import importlib
 import math
 import argparse
+import logging
+from pathlib import Path
 import pprint
-from typing import Sequence
+import sys
+from typing import Callable, Sequence, TypedDict
 import tequila as tq
+from tequila.quantumchemistry import QuantumChemistryBase
 import pandas as pd
 from tqdm import tqdm
-from numpy import eye, float64, floating
+from numpy import eye, floating
 from numpy.typing import NDArray
 import numpy as np
 from dataclasses import dataclass, field
@@ -18,6 +22,8 @@ from quanti_gin.shared import (
     generate_min_global_distance_edges,
 )
 
+logger = logging.getLogger(__name__)
+
 
 # static seed for development
 seed = None
@@ -25,18 +31,36 @@ np_random = np.random.default_rng(seed)
 rand = Random(seed)
 
 
+class OptimizationResult(TypedDict):
+    energy: float
+    orbital_coefficients: NDArray | None
+    variables: dict | None
+
+
 @dataclass
 class Job:
+    id: int
     geometry: str
-    edges: NDArray = field(default_factory=np.array)
-    guess: Sequence[NDArray[float64]] = field(default_factory=list)
+    optimization_algorithm: Callable[..., OptimizationResult]
     coordinates: NDArray = field(default_factory=np.array)
 
     edge_distances: Sequence[floating] = field(default_factory=list)
     coordinate_distances: Sequence[floating] = field(default_factory=list)
+    # custom optimization algorithm
 
 
 class DataGenerator:
+    @classmethod
+    def parse_geometry_string(cls, geometry_string: str) -> NDArray[np.float64]:
+        lines = geometry_string.split("\n")
+        coordinates = []
+        for line in lines:
+            if not line:
+                continue
+            parts = line.split(" ")
+            coordinates.append([float(parts[1]), float(parts[2]), float(parts[3])])
+        return np.array(coordinates)
+
     @classmethod
     def generate_geometry_string(cls, coordinates: NDArray[np.float64]):
         geom = ""
@@ -113,51 +137,60 @@ class DataGenerator:
         return edges
 
     @classmethod
-    def compute_reference_value(
-        cls, geometry: str, edges: list[tuple[int, int]], guess, basis_set
-    ):
-        mol = tq.Molecule(geometry=geometry, basis_set=basis_set)
-        return mol.compute_energy("fci")
+    def run_fci_optimization(cls, molecule: QuantumChemistryBase, *args, **kwargs):
+        return OptimizationResult(
+            energy=molecule.compute_energy("fci"),
+            orbital_coefficients=molecule.integral_manager.orbital_coefficients,
+            variables=None,
+        )
 
     @classmethod
-    def run_optimization(
-        cls, geometry: str, edges: list[tuple[int, int]], *args, **kwargs
-    ):
-        basis_set = "sto-3g"
-        guess = None
-        if "basis_set" in kwargs:
-            basis_set = kwargs["basis_set"]
-        if "guess" in kwargs:
-            guess = kwargs["guess"]
+    def run_spa_optimization(cls, molecule: QuantumChemistryBase, *args, **kwargs):
+        coordinates = cls.parse_geometry_string(molecule.parameters.geometry)
+        edges = generate_min_global_distance_edges(coordinates)
+        initial_guess = cls.generate_initial_guess_from_edges(
+            edges=edges, vertices=coordinates
+        ).T
 
-        mol = tq.Molecule(geometry=geometry, basis_set=basis_set)
-
-        U = mol.make_ansatz(name="HCB-SPA", edges=edges)
+        U = molecule.make_ansatz(name="HCB-SPA", edges=edges)
 
         opt = tq.chemistry.optimize_orbitals(
-            mol.use_native_orbitals(), U, initial_guess=guess, silent=True, use_hcb=True
+            molecule.use_native_orbitals(),
+            U,
+            initial_guess=initial_guess,
+            silent=True,
+            use_hcb=True,
         )
 
         mol = opt.molecule
         H = mol.make_hardcore_boson_hamiltonian()
 
-        # this line is valid, although my intellisense complains about it
-        v = np.linalg.eigvalsh(H.to_matrix())
-        hcb_energy = v[0]
-
         E = tq.ExpectationValue(H=H, U=U)
         result = tq.minimize(E, silent=True)
-
-        return (
-            result.energy,
-            opt.molecule.integral_manager.orbital_coefficients,
-            result.variables,
-            cls.compute_reference_value(geometry, edges, guess, basis_set),
-            hcb_energy,
+        return OptimizationResult(
+            energy=result.energy,
+            orbital_coefficients=opt.molecule.integral_manager.orbital_coefficients,
+            variables=result.variables,
         )
 
     @classmethod
-    def generate_jobs(cls, number_of_atoms, number_of_jobs, size=None):
+    def generate_jobs(
+        cls,
+        number_of_atoms,
+        number_of_jobs,
+        size=None,
+        method="spa",
+        custom_method=None,
+        compare_to=[],
+    ):
+
+        def get_algorithm_from_method(method):
+            if method == "spa":
+                return cls.run_spa_optimization
+            if method == "fci":
+                return cls.run_fci_optimization
+            raise ValueError(f"invalid method {method}")
+
         jobs = []
         sizes = [2, 3, 4]
         size_ratios = [0.3, 0.3, 0.3]
@@ -170,96 +203,131 @@ class DataGenerator:
                 count=number_of_atoms, max_distance=size
             )
             geometry = cls.generate_geometry_string(coordinates)
-            edges = generate_min_global_distance_edges(coordinates)
 
-            guess = cls.generate_initial_guess_from_edges(
-                vertices=coordinates, edges=edges
-            )
-            guess = guess.T
+            # edge_distances = [
+            #     np.linalg.norm(coordinates[edge[0]] - coordinates[edge[1]])
+            #     for edge in edges
+            # ]
+            # # fully connected graph, all distances
+            # coordinate_distances = [
+            #     [np.linalg.norm(other - coordinate) for other in coordinates]
+            #     for coordinate in coordinates
+            # ]
 
-            edge_distances = [
-                np.linalg.norm(coordinates[edge[0]] - coordinates[edge[1]])
-                for edge in edges
-            ]
-            # fully connected graph, all distances
-            coordinate_distances = [
-                [np.linalg.norm(other - coordinate) for other in coordinates]
-                for coordinate in coordinates
-            ]
+            if custom_method:
+                job = Job(
+                    id=i,
+                    geometry=geometry,
+                    coordinates=coordinates,
+                    # edge_distances=edge_distances,
+                    # coordinate_distances=coordinate_distances,
+                    optimization_algorithm=custom_method,
+                )
+                jobs.append(job)
+            else:
+                job = Job(
+                    id=i,
+                    geometry=geometry,
+                    coordinates=coordinates,
+                    # edge_distances=edge_distances,
+                    # coordinate_distances=coordinate_distances,
+                    optimization_algorithm=get_algorithm_from_method(method),
+                )
+                jobs.append(job)
 
-            job = Job(
-                geometry=geometry,
-                edges=edges,
-                guess=guess,
-                coordinates=coordinates,
-                edge_distances=edge_distances,
-                coordinate_distances=coordinate_distances,
-            )
-            jobs.append(job)
+            if compare_to:
+                for compare in compare_to:
+                    # do not duplicate methods
+                    if compare == method and not custom_method:
+                        continue
+                    job = Job(
+                        id=i,
+                        geometry=geometry,
+                        coordinates=coordinates,
+                        # edge_distances=edge_distances,
+                        # coordinate_distances=coordinate_distances,
+                        optimization_algorithm=get_algorithm_from_method(compare),
+                    )
+                    jobs.append(job)
+
         return jobs
 
     @classmethod
-    def execute_job(cls, job):
-        return cls.run_optimization(
-            geometry=job.geometry,
-            edges=job.edges,
-            guess=job.guess,
+    def execute_job(cls, job: Job, basis_set="sto-3g", compare_to=[]):
+        mol = tq.Molecule(geometry=job.geometry, basis_set=basis_set)
+        return job.optimization_algorithm(
+            mol,
             coordinates=job.coordinates,
         )
 
     @classmethod
-    def create_result_df(cls, jobs, job_results) -> pd.DataFrame:
+    def create_result_df(
+        cls, jobs: Sequence[Job], job_results: Sequence[OptimizationResult]
+    ) -> pd.DataFrame:
+        max_variable_count = max(
+            [0]
+            + [
+                len(result["variables"])
+                for result in job_results
+                if "variables" in result and result["variables"]
+            ]
+        )
         df = pd.DataFrame(
             {
-                "optimized_energy": [result[0] for result in job_results],
-                # "optimized_variables": [result[2] for result in job_results],
-                "exact_energy": [result[3] for result in job_results],
-                "hcb_energy": [result[4] for result in job_results],
+                "job_id": [job.id for job in jobs],
+                "optimized_energy": [result["energy"] for result in job_results],
                 "atom_count": [len(job.coordinates) for job in jobs],
-                "edge_count": [len(job.edges) for job in jobs],
-                "optimized_variable_count": [
-                    len(job_results[0][2].keys()) for job in jobs
+                "edge_count": [len(job.coordinates) // 2 for job in jobs],
+                "optimized_variable_count": max_variable_count,
+                "method": [
+                    f"{job.optimization_algorithm.__module__}.{job.optimization_algorithm.__name__}"
+                    for job in jobs
                 ],
             }
         )
-        for i in range(len(job_results[0][2].keys())):
-            df[f"optimized_variable_{i}"] = pd.Series()
+        if max_variable_count > 0:
+            for i in range(max_variable_count):
+                df[f"optimized_variable_{i}"] = pd.Series()
 
-        for job_index, job_result in enumerate(job_results):
-            for i, variable in enumerate(job_result[2].values()):
-                # normalize variable into range -2pi to 2pi
-                if variable < 0:
-                    normalized_variable = variable % (-math.pi * 2)
-                normalized_variable = variable % (math.pi * 2)
-                normalized_variable = normalized_variable / math.pi
-                df.loc[job_index, f"optimized_variable_{i}"] = normalized_variable
+            for job_index, job_result in enumerate(job_results):
+                if not ("variable" in job_result and job_result["variables"]):
+                    continue
+
+                for i, variable in enumerate(job_result["variables"].values()):
+                    # normalize variable into range -2pi to 2pi
+                    if variable < 0:
+                        normalized_variable = variable % (-math.pi * 2)
+                    normalized_variable = variable % (math.pi * 2)
+                    normalized_variable = normalized_variable / math.pi
+                    df.loc[job_index, f"optimized_variable_{i}"] = normalized_variable
 
         for i in range(len(jobs[0].coordinates)):
             df[f"x_{i}"] = pd.Series()
             df[f"y_{i}"] = pd.Series()
             df[f"z_{i}"] = pd.Series()
 
-        for i in range(len(jobs[0].edges)):
-            df[f"edge_{i}_start"] = pd.Series()
-            df[f"edge_{i}_end"] = pd.Series()
+        if hasattr(jobs[0], "edges"):
+            for i in range(len(jobs[0].edges)):
+                df[f"edge_{i}_start"] = pd.Series()
+                df[f"edge_{i}_end"] = pd.Series()
 
         for job_index, job in enumerate(jobs):
             for i, coordinate in enumerate(job.coordinates):
                 df.loc[job_index, f"x_{i}"] = coordinate[0]
                 df.loc[job_index, f"y_{i}"] = coordinate[1]
                 df.loc[job_index, f"z_{i}"] = coordinate[2]
-
-            for i, edge in enumerate(job.edges):
-                df.loc[job_index, f"edge_{i}_start"] = edge[0]
-                df.loc[job_index, f"edge_{i}_end"] = edge[1]
+            if hasattr(job, "edges"):
+                for i, edge in enumerate(job.edges):
+                    df.loc[job_index, f"edge_{i}_start"] = edge[0]
+                    df.loc[job_index, f"edge_{i}_end"] = edge[1]
 
         return df
 
     @classmethod
-    def execute_jobs(cls, jobs):
+    def execute_jobs(cls, jobs: Sequence[Job], compare_to=[]):
         job_results = []
         for job in tqdm(jobs, desc="calculating energies"):
-            result = cls.execute_job(job)
+            result = cls.execute_job(job, compare_to=compare_to)
             job_results.append(result)
         return job_results
 
@@ -315,11 +383,12 @@ def custom_generate_jobs_v1(*args, **kwargs):
 
         job = Job(
             geometry=geometry,
+            coordinates=coordinates,
             edges=edges,
             guess=guess,
-            coordinates=coordinates,
             edge_distances=edge_distances,
             coordinate_distances=coordinate_distances,
+            optimization_algorithm=DataGenerator.run_spa_optimization,
         )
         jobs.append(job)
     return jobs
@@ -391,18 +460,23 @@ def custom_generate_jobs_v2(*args, **kwargs):
     return jobs
 
 
-def evaluate_data(hcb_energy, exact_energy, edge_distances):
-    def map_error_to_class(error):
-        if error < 20:
-            return 0
-        if error < 100:
-            return 1
-        return 2
+def _import_custom_method(path: Path) -> Callable:
 
-    error = abs(hcb_energy - exact_energy) * 1000
-    error = map_error_to_class(error)
+    # append module to path
+    sys.path.append(str(path.parent))
 
-    return error
+    # import optimization method
+    custom_module = importlib.import_module(path.stem)
+    if not hasattr(custom_module, "run_optimization"):
+        raise ValueError(
+            f"invalid file {path} given for custom method, does not contain run_optimization method"
+        )
+    optimization_method = custom_module.run_optimization
+    if not isinstance(optimization_method, Callable):
+        raise ValueError(
+            f"invalid file {path} given for custom method, run_optimization is not callable"
+        )
+    return optimization_method
 
 
 def main():
@@ -413,13 +487,26 @@ def main():
         "number_of_atoms", type=int, help="number of atoms (even number)"
     )
     parser.add_argument("number_of_jobs", type=int, help="number of jobs to generate")
+
+    # TODO: currently not working due to structure changes, this still needs some refactoring
+    # parser.add_argument(
+    #     "--custom_job_generator",
+    #     type=str,
+    #     choices=["v1", "v2"],
+    #     required=False,
+    #     help="choose a custom job generator with different heuristics for H4 evaluation",
+    # )
+
     parser.add_argument(
-        "--custom_job_generator",
+        "--method",
+        "-M",
         type=str,
-        choices=["v1", "v2"],
+        choices=["fci", "spa"],
         required=False,
-        help="choose a custom job generator with different heuristics for H4 evaluation",
+        default="spa",
+        help="method to use for optimization, is overridden by custom-method, 'SPA' by default",
     )
+
     parser.add_argument(
         "--output", "-O", type=str, required=False, help="output file name"
     )
@@ -430,7 +517,43 @@ def main():
         help="evaluate the results based on the error class distribution",
     )
 
+    parser.add_argument(
+        "--custom-method",
+        type=Path,
+        help="custom method to run the optimization",
+    )
+
+    parser.add_argument(
+        "--compare-to",
+        type=str,
+        nargs="*",
+        choices=["fci", "spa"],
+        help="what to compare the primary method to",
+    )
+
+    parser.add_argument(
+        "--size",
+        "-S",
+        type=float,
+        default=2.75,
+        help="parameter for the job generator: influences the distance between atoms",
+    )
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="increase output verbosity",
+    )
+
     args = parser.parse_args()
+    opt_method = None
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+
+    if args.custom_method:
+        opt_method = _import_custom_method(args.custom_method)
 
     number_of_atoms = args.number_of_atoms
 
@@ -441,37 +564,35 @@ def main():
 
     job_generator = DataGenerator.generate_jobs
 
-    if args.custom_job_generator:
-        if args.custom_job_generator == "v1":
-            job_generator = custom_generate_jobs_v1
-        elif args.custom_job_generator == "v2":
-            job_generator = custom_generate_jobs_v2
-
-    evaluations = []
+    # if args.custom_job_generator:
+    #     if args.custom_job_generator == "v1":
+    #         job_generator = custom_generate_jobs_v1
+    #     elif args.custom_job_generator == "v2":
+    #         job_generator = custom_generate_jobs_v2
 
     jobs = job_generator(
-        number_of_atoms=number_of_atoms, number_of_jobs=number_of_jobs, size=2.75
+        number_of_atoms=number_of_atoms,
+        number_of_jobs=number_of_jobs,
+        size=args.size,
+        method=args.method,
+        custom_method=opt_method,
+        compare_to=args.compare_to,
     )
 
     job_results = []
 
     job_results = DataGenerator.execute_jobs(jobs)
 
-    if args.evaluate:
-        for job, result in zip(jobs, job_results):
-            evaluations.append(evaluate_data(result[3], result[4], job.edge_distances))
-        print("error class distribution:")
-        print(pd.Series(evaluations).value_counts())
-
     result_df = DataGenerator.create_result_df(jobs, job_results)
 
     path = args.output
     if not path:
-        filename = f"h{number_of_atoms}_{len(jobs)}.csv"
-        if args.custom_job_generator:
-            filename = (
-                f"custom_{args.custom_job_generator}_{number_of_atoms}_{len(jobs)}.csv"
-            )
+        filename = f"h{number_of_atoms}_{number_of_jobs}"
+        if args.compare_to:
+            method = args.method
+            if opt_method:
+                method = opt_method.__module__
+            filename = f"{filename}_{method}-vs-{str(args.compare_to)}.csv"
         path = filename
 
     result_df.to_csv(path)
