@@ -33,13 +33,13 @@ rand = Random(seed)
 
 class OptimizationResult(TypedDict):
     energy: float
-    orbital_coefficients: NDArray
-    reference_value: float
+    orbital_coefficients: NDArray | None
     variables: dict | None
 
 
 @dataclass
 class Job:
+    id: int
     geometry: str
     optimization_algorithm: Callable[..., OptimizationResult]
     coordinates: NDArray = field(default_factory=np.array)
@@ -137,19 +137,10 @@ class DataGenerator:
         return edges
 
     @classmethod
-    def compute_reference_value(cls, geometry: str, basis_set):
-        mol = tq.Molecule(geometry=geometry, basis_set=basis_set)
-        return mol.compute_energy("fci")
-
-    @classmethod
     def run_fci_optimization(cls, molecule: QuantumChemistryBase, *args, **kwargs):
         return OptimizationResult(
             energy=molecule.compute_energy("fci"),
             orbital_coefficients=molecule.integral_manager.orbital_coefficients,
-            reference_value=cls.compute_reference_value(
-                molecule.parameters.geometry,
-                molecule.parameters.basis_set,
-            ),
             variables=None,
         )
 
@@ -179,10 +170,6 @@ class DataGenerator:
         return OptimizationResult(
             energy=result.energy,
             orbital_coefficients=opt.molecule.integral_manager.orbital_coefficients,
-            reference_value=cls.compute_reference_value(
-                molecule.parameters.geometry,
-                molecule.parameters.basis_set,
-            ),
             variables=result.variables,
         )
 
@@ -227,9 +214,9 @@ class DataGenerator:
             #     for coordinate in coordinates
             # ]
 
-            # TODO: add FCI
             if custom_method:
                 job = Job(
+                    id=i,
                     geometry=geometry,
                     coordinates=coordinates,
                     # edge_distances=edge_distances,
@@ -237,18 +224,9 @@ class DataGenerator:
                     optimization_algorithm=custom_method,
                 )
                 jobs.append(job)
-                if compare_to:
-                    for compare in compare_to:
-                        job = Job(
-                            geometry=geometry,
-                            coordinates=coordinates,
-                            # edge_distances=edge_distances,
-                            # coordinate_distances=coordinate_distances,
-                            optimization_algorithm=get_algorithm_from_method(compare),
-                        )
-                        jobs.append(job)
             else:
                 job = Job(
+                    id=i,
                     geometry=geometry,
                     coordinates=coordinates,
                     # edge_distances=edge_distances,
@@ -256,6 +234,21 @@ class DataGenerator:
                     optimization_algorithm=get_algorithm_from_method(method),
                 )
                 jobs.append(job)
+
+            if compare_to:
+                for compare in compare_to:
+                    # do not duplicate methods
+                    if compare == method and not custom_method:
+                        continue
+                    job = Job(
+                        id=i,
+                        geometry=geometry,
+                        coordinates=coordinates,
+                        # edge_distances=edge_distances,
+                        # coordinate_distances=coordinate_distances,
+                        optimization_algorithm=get_algorithm_from_method(compare),
+                    )
+                    jobs.append(job)
 
         return jobs
 
@@ -271,30 +264,35 @@ class DataGenerator:
     def create_result_df(
         cls, jobs: Sequence[Job], job_results: Sequence[OptimizationResult]
     ) -> pd.DataFrame:
+        max_variable_count = max(
+            [0]
+            + [
+                len(result["variables"])
+                for result in job_results
+                if "variables" in result and result["variables"]
+            ]
+        )
         df = pd.DataFrame(
             {
+                "job_id": [job.id for job in jobs],
                 "optimized_energy": [result["energy"] for result in job_results],
-                "exact_energy": [result["reference_value"] for result in job_results],
                 "atom_count": [len(job.coordinates) for job in jobs],
                 "edge_count": [len(job.coordinates) // 2 for job in jobs],
-                "optimized_variable_count": [
-                    len(job_results[0]["variables"].keys())
-                    for job in jobs
-                    if job_results[0]["variables"]
-                ],
+                "optimized_variable_count": max_variable_count,
                 "method": [
                     f"{job.optimization_algorithm.__module__}.{job.optimization_algorithm.__name__}"
                     for job in jobs
                 ],
             }
         )
-        if job_results[0]["variables"]:
-            for i in range(len(job_results[0]["variables"].keys())):
+        if max_variable_count > 0:
+            for i in range(max_variable_count):
                 df[f"optimized_variable_{i}"] = pd.Series()
 
             for job_index, job_result in enumerate(job_results):
-                if not job_result["variables"]:
+                if not ("variable" in job_result and job_result["variables"]):
                     continue
+
                 for i, variable in enumerate(job_result["variables"].values()):
                     # normalize variable into range -2pi to 2pi
                     if variable < 0:
@@ -462,20 +460,6 @@ def custom_generate_jobs_v2(*args, **kwargs):
     return jobs
 
 
-def evaluate_data(hcb_energy, exact_energy, edge_distances):
-    def map_error_to_class(error):
-        if error < 20:
-            return 0
-        if error < 100:
-            return 1
-        return 2
-
-    error = abs(hcb_energy - exact_energy) * 1000
-    error = map_error_to_class(error)
-
-    return error
-
-
 def _import_custom_method(path: Path) -> Callable:
 
     # append module to path
@@ -503,13 +487,15 @@ def main():
         "number_of_atoms", type=int, help="number of atoms (even number)"
     )
     parser.add_argument("number_of_jobs", type=int, help="number of jobs to generate")
-    parser.add_argument(
-        "--custom_job_generator",
-        type=str,
-        choices=["v1", "v2"],
-        required=False,
-        help="choose a custom job generator with different heuristics for H4 evaluation",
-    )
+
+    # TODO: currently not working due to structure changes, this still needs some refactoring
+    # parser.add_argument(
+    #     "--custom_job_generator",
+    #     type=str,
+    #     choices=["v1", "v2"],
+    #     required=False,
+    #     help="choose a custom job generator with different heuristics for H4 evaluation",
+    # )
 
     parser.add_argument(
         "--method",
@@ -518,7 +504,7 @@ def main():
         choices=["fci", "spa"],
         required=False,
         default="spa",
-        help="method to use for optimization, can not be used with custom-method",
+        help="method to use for optimization, is overridden by custom-method, 'SPA' by default",
     )
 
     parser.add_argument(
@@ -542,7 +528,15 @@ def main():
         type=str,
         nargs="*",
         choices=["fci", "spa"],
-        help="what to compare the custom method to",
+        help="what to compare the primary method to",
+    )
+
+    parser.add_argument(
+        "--size",
+        "-S",
+        type=float,
+        default=2.75,
+        help="parameter for the job generator: influences the distance between atoms",
     )
 
     parser.add_argument(
@@ -561,11 +555,6 @@ def main():
     if args.custom_method:
         opt_method = _import_custom_method(args.custom_method)
 
-    if args.compare_to and not args.custom_method:
-        raise ValueError("compare-to requires custom-method to be set")
-
-    print(args.compare_to)
-
     number_of_atoms = args.number_of_atoms
 
     if number_of_atoms % 2 != 0:
@@ -575,18 +564,16 @@ def main():
 
     job_generator = DataGenerator.generate_jobs
 
-    if args.custom_job_generator:
-        if args.custom_job_generator == "v1":
-            job_generator = custom_generate_jobs_v1
-        elif args.custom_job_generator == "v2":
-            job_generator = custom_generate_jobs_v2
-
-    evaluations = []
+    # if args.custom_job_generator:
+    #     if args.custom_job_generator == "v1":
+    #         job_generator = custom_generate_jobs_v1
+    #     elif args.custom_job_generator == "v2":
+    #         job_generator = custom_generate_jobs_v2
 
     jobs = job_generator(
         number_of_atoms=number_of_atoms,
         number_of_jobs=number_of_jobs,
-        size=2.75,
+        size=args.size,
         method=args.method,
         custom_method=opt_method,
         compare_to=args.compare_to,
@@ -596,21 +583,16 @@ def main():
 
     job_results = DataGenerator.execute_jobs(jobs)
 
-    if args.evaluate:
-        for job, result in zip(jobs, job_results):
-            evaluations.append(evaluate_data(result[3], result[4], job.edge_distances))
-        print("error class distribution:")
-        print(pd.Series(evaluations).value_counts())
-
     result_df = DataGenerator.create_result_df(jobs, job_results)
 
     path = args.output
     if not path:
-        filename = f"h{number_of_atoms}_{len(jobs)}_{opt_method.__module__ + '-vs-' + str(args.compare_to) if opt_method else args.method}.csv"
-        if args.custom_job_generator:
-            filename = (
-                f"custom_{args.custom_job_generator}_{number_of_atoms}_{len(jobs)}.csv"
-            )
+        filename = f"h{number_of_atoms}_{number_of_jobs}"
+        if args.compare_to:
+            method = args.method
+            if opt_method:
+                method = opt_method.__module__
+            filename = f"{filename}_{method}-vs-{str(args.compare_to)}.csv"
         path = filename
 
     result_df.to_csv(path)
