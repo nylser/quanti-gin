@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/nylser/quanti-gin/compare/v1.1.4...v1.2.0) (2024-09-20)
+
+
+### Features
+
+* only require energy in dict to be returned & more tweaks ([8d7041f](https://github.com/nylser/quanti-gin/commit/8d7041fc8603e58f702793ccd2b89ac16c640046))
+* reorganize and restructure for benchmark focus BREAKING ([5fae9b1](https://github.com/nylser/quanti-gin/commit/5fae9b13c057241bf6ae9cd5b6a372803689bc5a))
+
 ## [1.1.4](https://github.com/nylser/quanti-gin/compare/v1.1.3...v1.1.4) (2024-07-12)
 
 
