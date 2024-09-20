@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.0](https://github.com/nylser/quanti-gin/compare/v1.2.0...v2.0.0) (2024-09-20)
+
+
+### Miscellaneous Chores
+
+* release 2.0.0 ([5ce8f43](https://github.com/nylser/quanti-gin/commit/5ce8f43181399c02f0f7922c5111fe8a7bc361a1))
+
 ## [1.2.0](https://github.com/nylser/quanti-gin/compare/v1.1.4...v1.2.0) (2024-09-20)
 
 
