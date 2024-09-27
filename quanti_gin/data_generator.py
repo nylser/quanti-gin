@@ -57,6 +57,7 @@ class DataGenerator:
         for line in lines:
             if not line:
                 continue
+            line = line.strip()
             parts = line.split(" ")
             coordinates.append([float(parts[1]), float(parts[2]), float(parts[3])])
         return np.array(coordinates)
