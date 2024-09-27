@@ -136,7 +136,7 @@ def generate_min_local_distance_edges(vertices: np.ndarray):
     return all_edges
 
 
-def generate_min_global_distance_edges(vertices: np.ndarray):
+def generate_min_global_distance_edges(vertices: np.ndarray, nth_best=0):
     """
     input: vertices: np.ndarray
     A globally optimal solution to the edge generation problem.
@@ -156,7 +156,10 @@ def generate_min_global_distance_edges(vertices: np.ndarray):
     if max_edge_lengths > min_edge_lengths:
         pass
         # print("FOUND MORE OPTIMAL EDGES", min_edge_lengths, max_edge_lengths)
-    return all_edges[np.argmin(all_edge_lengths)]
+    sorted_edges = np.argsort(all_edge_lengths)
+    if nth_best > len(all_edges):
+        raise ValueError(f"nth_best {nth_best} does not exist")
+    return all_edges[sorted_edges[nth_best]]
 
 
 def generate_local_optimal_edges_from_vertices(vertices: np.ndarray, start=0):
