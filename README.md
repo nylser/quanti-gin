@@ -35,3 +35,9 @@ A full example of this can be found in [examples/customized_generator.py](quanti
 You can run the example code by executing:
 
     python -m quanti_gin.examples.customized_generator
+
+## Documentation and Visualization notebook
+
+For a more detailed introduction and background, please take a look at the [Summary](./notebooks/Summary/Summary.qmd).
+
+Additionally, for more details on how to interpret and evaluate the generated data, take a look at the [Visualization notebook](./notebooks/Visualization.ipynb).
