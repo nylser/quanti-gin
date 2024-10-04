@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.0](https://github.com/nylser/quanti-gin/compare/v2.0.0...v2.1.0) (2024-10-04)
+
+
+### Features
+
+* add nth_best parameter to min_global_distance_edges ([1c683c4](https://github.com/nylser/quanti-gin/commit/1c683c4fdae3a5f82e62cc2aeb02f705623fb15d))
+
+
+### Bug Fixes
+
+* remove extra whitespace from lines ([9e9307c](https://github.com/nylser/quanti-gin/commit/9e9307c37f8a5a6cd9d617873df75598c7a17b18))
+* shared data file reader ([7d53624](https://github.com/nylser/quanti-gin/commit/7d53624abc065c0b9b52c90d616d3fead1971fdf))
+
 ## [2.0.0](https://github.com/nylser/quanti-gin/compare/v1.2.0...v2.0.0) (2024-09-20)
 
 
