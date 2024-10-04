@@ -6,36 +6,66 @@ from numpy.typing import NDArray
 
 
 @dataclass
+class Result:
+    job_id: int
+    method: str
+    optimized_energy: float
+    optimized_variables: list[float]
+    edges: list[tuple[int, int]]
+
+
+@dataclass
 class DataFile:
     file_path: PathLike
     df: pd.DataFrame
-    hcb_energy: pd.Series
-    exact_energy: pd.Series
-    spa_energy: pd.Series
     coordinates: NDArray[np.float64]
-    edges: list[list[tuple[int, int]]]
-    optimized_variables: list[list[float]]
+    method_results: dict[str, Result]
+
+
+def read_result(job) -> Result:
+    job_id = job["job_id"]
+    method = job["method"]
+    optimized_energy = job["optimized_energy"]
+    if "optimized_variables" in job:
+        optimized_variables = job["optimized_variables"]
+        optimized_variable_counts = job["optimized_variable_count"]
+        optimized_variable_cols = [
+            [f"optimized_variable_{i}" for i in range(optimized_variable_count)]
+            for optimized_variable_count in optimized_variable_counts
+        ]
+
+        for i, cols in enumerate(optimized_variable_cols):
+            sample_variables = [job[col][i] for col in cols]
+            optimized_variables.append(sample_variables)
+    else:
+        optimized_variables = []
+    if "edges" in job:
+        edges = job["edges"]
+    else:
+        edges = []
+    return Result(
+        job_id=job_id,
+        method=method,
+        optimized_energy=optimized_energy,
+        optimized_variables=optimized_variables,
+        edges=edges,
+    )
 
 
 def read_data_file(file_path: PathLike):
     # load the csv file into a pandas dataframe
     df = pd.read_csv(file_path)
 
+    method_results = {}
+    job_groups = df.groupby("method")
+    for group_key, group in job_groups:
+        method_results[group_key] = read_result(group)
+
     atom_counts = df["atom_count"]
     coordinate_cols = [
         [(f"x_{i}", f"y_{i}", f"z_{i}") for i in range(atom_count)]
         for atom_count in atom_counts
     ]
-
-    optimized_variable_counts = df["optimized_variable_count"]
-    optimized_variable_cols = [
-        [f"optimized_variable_{i}" for i in range(optimized_variable_count)]
-        for optimized_variable_count in optimized_variable_counts
-    ]
-
-    hcb_energy = df["hcb_energy"]
-    exact_energy = df["exact_energy"]
-    spa_energy = df["optimized_energy"]
 
     coordinates = []
     for i, cols in enumerate(coordinate_cols):
@@ -45,33 +75,26 @@ def read_data_file(file_path: PathLike):
         coordinates.append(sample_coordinates)
     coordinates = np.array(coordinates)
 
-    optimized_variables = []
+    if "edge_0_start" in df:
+        edges = []
+        edge_counts = df["edge_count"]
 
-    for i, cols in enumerate(optimized_variable_cols):
-        sample_variables = [df[col][i] for col in cols]
-        optimized_variables.append(sample_variables)
+        edge_cols = [
+            [(f"edge_{i}_start", f"edge_{i}_end") for i in range(edge_count)]
+            for edge_count in edge_counts
+        ]
 
-    edge_counts = df["edge_count"]
-
-    edge_cols = [
-        [(f"edge_{i}_start", f"edge_{i}_end") for i in range(edge_count)]
-        for edge_count in edge_counts
-    ]
-    edges = []
-
-    for i, cols in enumerate(edge_cols):
-        sample_edges = [(df[col[0]][i], df[col[1]][i]) for col in cols]
-        edges.append(sample_edges)
+        for i, cols in enumerate(edge_cols):
+            sample_edges = [(df[col[0]][i], df[col[1]][i]) for col in cols]
+            edges.append(sample_edges)
+    else:
+        edges = []
 
     return DataFile(
         file_path=file_path,
         df=df,
-        hcb_energy=hcb_energy,
-        exact_energy=exact_energy,
-        spa_energy=spa_energy,
         coordinates=coordinates,
-        optimized_variables=optimized_variables,
-        edges=edges,
+        method_results=method_results,
     )
 
 
@@ -113,7 +136,7 @@ def generate_min_local_distance_edges(vertices: np.ndarray):
     return all_edges
 
 
-def generate_min_global_distance_edges(vertices: np.ndarray):
+def generate_min_global_distance_edges(vertices: np.ndarray, nth_best=0):
     """
     input: vertices: np.ndarray
     A globally optimal solution to the edge generation problem.
@@ -133,7 +156,10 @@ def generate_min_global_distance_edges(vertices: np.ndarray):
     if max_edge_lengths > min_edge_lengths:
         pass
         # print("FOUND MORE OPTIMAL EDGES", min_edge_lengths, max_edge_lengths)
-    return all_edges[np.argmin(all_edge_lengths)]
+    sorted_edges = np.argsort(all_edge_lengths)
+    if nth_best > len(all_edges):
+        raise ValueError(f"nth_best {nth_best} does not exist")
+    return all_edges[sorted_edges[nth_best]]
 
 
 def generate_local_optimal_edges_from_vertices(vertices: np.ndarray, start=0):
