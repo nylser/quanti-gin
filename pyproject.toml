@@ -9,7 +9,7 @@ repository = "https://github.com/nylser/quanti-gin"
 packages = [{include = "quanti_gin"}]
 
 [tool.poetry.dependencies]
-python = "3.10.*"
+python = "^3.10"
 tequila-basic = "^1.9.5"
 numpy = "^1.26.4"
 pandas = "^2.2.2"
