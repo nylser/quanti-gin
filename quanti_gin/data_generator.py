@@ -31,10 +31,16 @@ np_random = np.random.default_rng(seed)
 rand = Random(seed)
 
 
+class CustomData(TypedDict):
+    name: str
+    data: "list | str | float | int | np.number"
+
+
 class OptimizationResult(TypedDict):
     energy: float
     orbital_coefficients: NDArray | None
     variables: dict | None
+    custom_data: Sequence[CustomData] | None
 
 
 @dataclass
@@ -47,6 +53,7 @@ class Job:
     edge_distances: Sequence[floating] = field(default_factory=list)
     coordinate_distances: Sequence[floating] = field(default_factory=list)
     # custom optimization algorithm
+    custom_job_data: Sequence[CustomData] = field(default_factory=list)
 
 
 class DataGenerator:
@@ -143,6 +150,7 @@ class DataGenerator:
             energy=molecule.compute_energy("fci"),
             orbital_coefficients=molecule.integral_manager.orbital_coefficients,
             variables=None,
+            custom_data=None,
         )
 
     @classmethod
@@ -172,6 +180,7 @@ class DataGenerator:
             energy=result.energy,
             orbital_coefficients=opt.molecule.integral_manager.orbital_coefficients,
             variables=result.variables,
+            custom_data=None,
         )
 
     @classmethod
@@ -184,7 +193,6 @@ class DataGenerator:
         custom_method=None,
         compare_to=[],
     ):
-
         def get_algorithm_from_method(method):
             if method == "spa":
                 return cls.run_spa_optimization
@@ -214,15 +222,15 @@ class DataGenerator:
             #     [np.linalg.norm(other - coordinate) for other in coordinates]
             #     for coordinate in coordinates
             # ]
+            custom_job_data = [CustomData(name="test_data", data=i)]
 
             if custom_method:
                 job = Job(
                     id=i,
                     geometry=geometry,
                     coordinates=coordinates,
-                    # edge_distances=edge_distances,
-                    # coordinate_distances=coordinate_distances,
                     optimization_algorithm=custom_method,
+                    custom_job_data=custom_job_data,
                 )
                 jobs.append(job)
             else:
@@ -230,9 +238,8 @@ class DataGenerator:
                     id=i,
                     geometry=geometry,
                     coordinates=coordinates,
-                    # edge_distances=edge_distances,
-                    # coordinate_distances=coordinate_distances,
                     optimization_algorithm=get_algorithm_from_method(method),
+                    custom_job_data=custom_job_data,
                 )
                 jobs.append(job)
 
@@ -245,9 +252,8 @@ class DataGenerator:
                         id=i,
                         geometry=geometry,
                         coordinates=coordinates,
-                        # edge_distances=edge_distances,
-                        # coordinate_distances=coordinate_distances,
                         optimization_algorithm=get_algorithm_from_method(compare),
+                        custom_job_data=custom_job_data,
                     )
                     jobs.append(job)
 
@@ -276,51 +282,78 @@ class DataGenerator:
         df = pd.DataFrame(
             {
                 "job_id": [job.id for job in jobs],
-                "optimized_energy": [result["energy"] for result in job_results],
-                "atom_count": [len(job.coordinates) for job in jobs],
-                "edge_count": [len(job.coordinates) // 2 for job in jobs],
-                "optimized_variable_count": max_variable_count,
                 "method": [
                     f"{job.optimization_algorithm.__module__}.{job.optimization_algorithm.__name__}"
                     for job in jobs
                 ],
+                "optimized_energy": [result["energy"] for result in job_results],
+                "optimized_variable_count": max_variable_count,
+                "atom_count": [len(job.coordinates) for job in jobs],
+                "edge_count": [len(job.coordinates) // 2 for job in jobs],
             }
         )
+
+        # apply custom data to data frame
+        for i, result in enumerate(job_results):
+            if not hasattr(result, "custom_data"):
+                continue
+            custom_data = result["custom_data"]
+            if not custom_data:
+                continue
+
+            for datapoint in custom_data:
+                datapoint_name = datapoint["name"]
+                name = f"custom_data_{datapoint_name}"
+                data = datapoint["data"]
+                if name not in df:
+                    df[name] = pd.Series()
+
+                df.loc[i, name] = data
+
+        # apply custom job data to data frame
+        for i, job in enumerate(jobs):
+            custom_data = job.custom_job_data
+            if not custom_data:
+                continue
+
+            for datapoint in custom_data:
+                datapoint_name = datapoint["name"]
+                name = f"custom_job_data_{datapoint_name}"
+                data = datapoint["data"]
+                if name not in df:
+                    df[name] = pd.Series()
+
+                df.loc[i, name] = data
+
+        # add optimized and normalized variables
         if max_variable_count > 0:
             for i in range(max_variable_count):
                 df[f"optimized_variable_{i}"] = pd.Series()
 
             for job_index, job_result in enumerate(job_results):
-                if not ("variable" in job_result and job_result["variables"]):
+                if not ("variables" in job_result and job_result["variables"]):
                     continue
 
                 for i, variable in enumerate(job_result["variables"].values()):
                     # normalize variable into range -2pi to 2pi
                     if variable < 0:
                         normalized_variable = variable % (-math.pi * 2)
-                    normalized_variable = variable % (math.pi * 2)
+                    else:
+                        normalized_variable = variable % (math.pi * 2)
                     normalized_variable = normalized_variable / math.pi
                     df.loc[job_index, f"optimized_variable_{i}"] = normalized_variable
 
+        # add coordinates
         for i in range(len(jobs[0].coordinates)):
             df[f"x_{i}"] = pd.Series()
             df[f"y_{i}"] = pd.Series()
             df[f"z_{i}"] = pd.Series()
 
-        if hasattr(jobs[0], "edges"):
-            for i in range(len(jobs[0].edges)):
-                df[f"edge_{i}_start"] = pd.Series()
-                df[f"edge_{i}_end"] = pd.Series()
-
-        for job_index, job in enumerate(jobs):
-            for i, coordinate in enumerate(job.coordinates):
-                df.loc[job_index, f"x_{i}"] = coordinate[0]
-                df.loc[job_index, f"y_{i}"] = coordinate[1]
-                df.loc[job_index, f"z_{i}"] = coordinate[2]
-            if hasattr(job, "edges"):
-                for i, edge in enumerate(job.edges):
-                    df.loc[job_index, f"edge_{i}_start"] = edge[0]
-                    df.loc[job_index, f"edge_{i}_end"] = edge[1]
+        for i, job in enumerate(jobs):
+            for coordinate_idx, coordinate in enumerate(job.coordinates):
+                df.loc[i, f"x_{coordinate_idx}"] = coordinate[0]
+                df.loc[i, f"y_{coordinate_idx}"] = coordinate[1]
+                df.loc[i, f"z_{coordinate_idx}"] = coordinate[2]
 
         return df
 
@@ -462,7 +495,6 @@ def custom_generate_jobs_v2(*args, **kwargs):
 
 
 def _import_custom_method(path: Path) -> Callable:
-
     # append module to path
     sys.path.append(str(path.parent))
 
@@ -481,7 +513,6 @@ def _import_custom_method(path: Path) -> Callable:
 
 
 def main():
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -594,6 +625,8 @@ def main():
             if opt_method:
                 method = opt_method.__module__
             filename = f"{filename}_{method}-vs-{str(args.compare_to)}.csv"
+        else:
+            filename = f"{filename}_{args.method}.csv"
         path = filename
 
     result_df.to_csv(path)
