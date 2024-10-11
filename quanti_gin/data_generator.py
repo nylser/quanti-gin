@@ -260,7 +260,7 @@ class DataGenerator:
         return jobs
 
     @classmethod
-    def execute_job(cls, job: Job, basis_set="sto-3g", compare_to=[]):
+    def execute_job(cls, job: Job, basis_set="sto-3g"):
         mol = tq.Molecule(geometry=job.geometry, basis_set=basis_set)
         return job.optimization_algorithm(
             mol,
@@ -358,10 +358,10 @@ class DataGenerator:
         return df
 
     @classmethod
-    def execute_jobs(cls, jobs: Sequence[Job], compare_to=[]):
+    def execute_jobs(cls, jobs: Sequence[Job]):
         job_results = []
         for job in tqdm(jobs, desc="calculating energies"):
-            result = cls.execute_job(job, compare_to=compare_to)
+            result = cls.execute_job(job)
             job_results.append(result)
         return job_results
 
