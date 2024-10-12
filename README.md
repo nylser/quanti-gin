@@ -38,6 +38,6 @@ You can run the example code by executing:
 
 ## Documentation and Visualization notebook
 
-For a more detailed introduction and background, please take a look at the [Summary](./notebooks/Summary/Summary.qmd).
+For a more detailed introduction and background, please take a look at the [Summary](https://nylser.github.io/quanti-gin/Summary.html).
 
 Additionally, for more details on how to interpret and evaluate the generated data, take a look at the [Visualization notebook](./notebooks/Visualization.ipynb).
