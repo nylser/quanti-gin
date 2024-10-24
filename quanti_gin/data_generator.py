@@ -157,8 +157,9 @@ class DataGenerator:
         )
 
     @classmethod
-    def run_spa_optimization(cls, molecule: QuantumChemistryBase, *args, **kwargs):
-        coordinates = cls.parse_geometry_string(molecule.parameters.geometry)
+    def run_spa_optimization(
+        cls, molecule: QuantumChemistryBase, *args, coordinates, **kwargs
+    ):
         edges = generate_min_global_distance_edges(coordinates)
         initial_guess = cls.generate_initial_guess_from_edges(
             edges=edges, vertices=coordinates
