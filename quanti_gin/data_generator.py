@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 import pprint
 import sys
-from typing import Callable, Sequence, TypedDict
+from typing import Any, Callable, Sequence, TypedDict
 import tequila as tq
 from tequila.quantumchemistry import QuantumChemistryBase
 import pandas as pd
@@ -54,6 +54,9 @@ class Job:
     coordinate_distances: Sequence[floating] = field(default_factory=list)
     # custom optimization algorithm
     custom_job_data: Sequence[CustomData] = field(default_factory=list)
+
+    # custom arguments that one might want to pass to the optimization execution
+    kwargs: dict = field(default_factory=dict)
 
 
 class DataGenerator:
@@ -193,7 +196,9 @@ class DataGenerator:
         custom_method=None,
         compare_to=[],
     ):
-        def get_algorithm_from_method(method):
+        def get_algorithm_from_method(method) -> Callable:
+            if callable(method):
+                return method
             if method == "spa":
                 return cls.run_spa_optimization
             if method == "fci":
@@ -263,8 +268,7 @@ class DataGenerator:
     def execute_job(cls, job: Job, basis_set="sto-3g"):
         mol = tq.Molecule(geometry=job.geometry, basis_set=basis_set)
         return job.optimization_algorithm(
-            mol,
-            coordinates=job.coordinates,
+            mol, coordinates=job.coordinates, **job.kwargs
         )
 
     @classmethod
@@ -295,7 +299,7 @@ class DataGenerator:
 
         # apply custom data to data frame
         for i, result in enumerate(job_results):
-            if not hasattr(result, "custom_data"):
+            if "custom_data" not in result:
                 continue
             custom_data = result["custom_data"]
             if not custom_data:
@@ -335,13 +339,14 @@ class DataGenerator:
                     continue
 
                 for i, variable in enumerate(job_result["variables"].values()):
-                    # normalize variable into range -2pi to 2pi
-                    if variable < 0:
-                        normalized_variable = variable % (-math.pi * 2)
-                    else:
-                        normalized_variable = variable % (math.pi * 2)
-                    normalized_variable = normalized_variable / math.pi
-                    df.loc[job_index, f"optimized_variable_{i}"] = normalized_variable
+                    # # normalize variable into range -2pi to 2pi
+                    # if variable < 0:
+                    #     normalized_variable = variable % (-math.pi * 2)
+                    # else:
+                    #     normalized_variable = variable % (math.pi * 2)
+                    # normalized_variable = normalized_variable / math.pi
+                    # df.loc[job_index, f"optimized_variable_{i}"] = normalized_variable
+                    df.loc[job_index, f"optimized_variable_{i}"] = variable
 
         # add coordinates
         for i in range(len(jobs[0].coordinates)):
