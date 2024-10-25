@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.2.0](https://github.com/nylser/quanti-gin/compare/v2.1.0...v2.2.0) (2024-10-25)
+
+
+### Features
+
+* add support for custom data on jobs and results ([07b313b](https://github.com/nylser/quanti-gin/commit/07b313b2199749dd9e1ec33264398ed9cd941230))
+* remove variable normalization, left to the data interpreter + add custom arguments passed to optimization routine ([c28d137](https://github.com/nylser/quanti-gin/commit/c28d1373658867d045eb2826d25e302af59451ab))
+
+
+### Bug Fixes
+
+* remove extraneous coordinates calculation ([87510c9](https://github.com/nylser/quanti-gin/commit/87510c98023cc2a6ad8cd9510a9fe5e096d2bb99))
+
 ## [2.1.0](https://github.com/nylser/quanti-gin/compare/v2.0.0...v2.1.0) (2024-10-04)
 
 
