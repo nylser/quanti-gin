@@ -219,16 +219,7 @@ class DataGenerator:
             )
             geometry = cls.generate_geometry_string(coordinates)
 
-            # edge_distances = [
-            #     np.linalg.norm(coordinates[edge[0]] - coordinates[edge[1]])
-            #     for edge in edges
-            # ]
-            # # fully connected graph, all distances
-            # coordinate_distances = [
-            #     [np.linalg.norm(other - coordinate) for other in coordinates]
-            #     for coordinate in coordinates
-            # ]
-            custom_job_data = [CustomData(name="test_data", data=i)]
+            custom_job_data = []
 
             if custom_method:
                 job = Job(
