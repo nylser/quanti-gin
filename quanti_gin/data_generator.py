@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
-import importlib
-import math
 import argparse
+import importlib
 import logging
-from pathlib import Path
 import pprint
 import sys
+import multiprocessing
+from dataclasses import dataclass, field
+from pathlib import Path
+from random import Random
 from typing import Any, Callable, Sequence, TypedDict
-import tequila as tq
-from tequila.quantumchemistry import QuantumChemistryBase
+
+import numpy as np
 import pandas as pd
-from tqdm import tqdm
+import tequila as tq
 from numpy import eye, floating
 from numpy.typing import NDArray
-import numpy as np
-from dataclasses import dataclass, field
-from random import Random
+from tequila.quantumchemistry import QuantumChemistryBase
+from tqdm import tqdm
 
 from quanti_gin.shared import (
-    generate_min_local_distance_edges,
     generate_min_global_distance_edges,
+    generate_min_local_distance_edges,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,8 +95,8 @@ class DataGenerator:
         for i in range(1, count):
             prev_coord = np_random.choice(coordinates)
             min_distance = 0
-            # make sure we have a minimum of 0.25 angstrom between the atom cores
-            while min_distance <= 0.25:
+            # make sure we have a minimum of 0.5 angstrom between the atom cores
+            while min_distance <= 0.5:
                 new_coord = prev_coord + (np_random.random(3) * max_distance)
 
                 min_distance = np.min(np.linalg.norm(new_coord - coordinates, axis=1))
@@ -355,11 +356,20 @@ class DataGenerator:
         return df
 
     @classmethod
-    def execute_jobs(cls, jobs: Sequence[Job]):
+    def execute_jobs(
+        cls,
+        jobs: Sequence[Job],
+    ):
         job_results = []
         for job in tqdm(jobs, desc="calculating energies"):
             result = cls.execute_job(job)
             job_results.append(result)
+        return job_results
+
+    @classmethod
+    def execute_jobs_in_parallel(cls, jobs: Sequence[Job], threads=None):
+        with multiprocessing.Pool(threads) as p:
+            job_results = list(tqdm(p.imap(cls.execute_job, jobs), total=len(jobs)))
         return job_results
 
 
@@ -537,6 +547,15 @@ def main():
     )
 
     parser.add_argument(
+        "--jobs",
+        "-j",
+        type=int,
+        required=False,
+        default=None,
+        help="Number of threads to execute jobs in",
+    )
+
+    parser.add_argument(
         "--output", "-O", type=str, required=False, help="output file name"
     )
     parser.add_argument(
@@ -610,7 +629,10 @@ def main():
 
     job_results = []
 
-    job_results = DataGenerator.execute_jobs(jobs)
+    if args.jobs:
+        job_results = DataGenerator.execute_jobs_in_parallel(jobs, threads=args.jobs)
+    else:
+        job_results = DataGenerator.execute_jobs(jobs)
 
     result_df = DataGenerator.create_result_df(jobs, job_results)
 
