@@ -2,13 +2,12 @@
 import argparse
 import importlib
 import logging
-import pprint
 import sys
 import multiprocessing
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
-from typing import Any, Callable, Sequence, TypedDict
+from typing import Callable, Sequence, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -20,7 +19,6 @@ from tqdm import tqdm
 
 from quanti_gin.shared import (
     generate_min_global_distance_edges,
-    generate_min_local_distance_edges,
 )
 
 logger = logging.getLogger(__name__)
@@ -113,18 +111,6 @@ class DataGenerator:
         return distances
 
     @classmethod
-    def generate_initial_guess(cls, count: int):
-        if count % 2 != 0:
-            raise ValueError("count needs to be a multipe of two")
-        initial_guess = eye(count)
-        for i in range(0, count, 2):
-            initial_guess[i][i] = 1.0
-            initial_guess[i][i + 1] = 1.0
-            initial_guess[i + 1][i] = 1.0
-            initial_guess[i + 1][i + 1] = -1.0
-        return initial_guess
-
-    @classmethod
     def generate_initial_guess_from_edges(
         cls, vertices: NDArray[np.float64], edges: list[tuple[int, int]]
     ) -> NDArray:
@@ -138,15 +124,6 @@ class DataGenerator:
             initial_guess[edge[1]][edge[0]] = -1.0
             initial_guess[edge[1]][edge[1]] = 1.0
         return initial_guess
-
-    @classmethod
-    def generate_edges(cls, atom_count: int):
-        if atom_count % 2 != 0:
-            raise ValueError("count needs to be a multipe of two")
-        edges = []
-        for i in range(0, atom_count, 2):
-            edges.append((i, i + 1))
-        return edges
 
     @classmethod
     def run_fci_optimization(cls, molecule: QuantumChemistryBase, *args, **kwargs):
@@ -322,7 +299,7 @@ class DataGenerator:
 
                 df.loc[i, name] = data
 
-        # add optimized and normalized variables
+        # add optimized and variables
         if max_variable_count > 0:
             for i in range(max_variable_count):
                 df[f"optimized_variable_{i}"] = pd.Series()
@@ -332,13 +309,6 @@ class DataGenerator:
                     continue
 
                 for i, variable in enumerate(job_result["variables"].values()):
-                    # # normalize variable into range -2pi to 2pi
-                    # if variable < 0:
-                    #     normalized_variable = variable % (-math.pi * 2)
-                    # else:
-                    #     normalized_variable = variable % (math.pi * 2)
-                    # normalized_variable = normalized_variable / math.pi
-                    # df.loc[job_index, f"optimized_variable_{i}"] = normalized_variable
                     df.loc[job_index, f"optimized_variable_{i}"] = variable
 
         # add coordinates
@@ -373,134 +343,6 @@ class DataGenerator:
         return job_results
 
 
-def custom_generate_jobs_v1(*args, **kwargs):
-    """
-    Generates jobs with two groups of atoms:
-    - groups are at a distance of constant d
-    - atoms in the groups are at a distance of a
-    - a is in the range of 0.5 to 5
-    """
-    d = 0.5
-    job_count = 250
-    start_a = d / 2
-    stop_a = 5
-    step_a = abs(start_a - stop_a) / job_count
-    jobs = []
-
-    for job_num in range(job_count):
-        coordinates = []
-        a = step_a * job_num + start_a
-
-        first_coordinate = np.array([0, 0, 0])
-        second_coordinate = np.array(first_coordinate + [a, 0, 0])
-
-        third_coordinate = np.array(second_coordinate + [d, 0, 0])
-        fourth_coordinate = np.array(third_coordinate + [a, 0, 0])
-
-        coordinates = np.array(
-            [first_coordinate, second_coordinate, third_coordinate, fourth_coordinate]
-        )
-
-        geometry = DataGenerator.generate_geometry_string(coordinates)
-        edges = generate_min_global_distance_edges(coordinates)
-
-        guess = DataGenerator.generate_initial_guess_from_edges(
-            vertices=coordinates, edges=edges
-        )
-        guess = guess.T
-
-        edge_distances = [
-            np.linalg.norm(coordinates[edge[0]] - coordinates[edge[1]])
-            for edge in edges
-        ]
-
-        # fully connected graph, all distances
-        coordinate_distances = [
-            [np.linalg.norm(other - coordinate) for other in coordinates]
-            for coordinate in coordinates
-        ]
-
-        pprint.pprint(coordinate_distances)
-
-        job = Job(
-            geometry=geometry,
-            coordinates=coordinates,
-            edges=edges,
-            guess=guess,
-            edge_distances=edge_distances,
-            coordinate_distances=coordinate_distances,
-            optimization_algorithm=DataGenerator.run_spa_optimization,
-        )
-        jobs.append(job)
-    return jobs
-
-
-def custom_generate_jobs_v2(*args, **kwargs):
-    """
-    Generates jobs with two groups of atoms:
-    - groups are at a distance a
-    - atoms in the groups are at a distance of constant d
-    - a is in the range of 0.5 to 5
-    """
-    d = 1.5
-    job_count = 250
-    if "number_of_jobs" in kwargs:
-        job_count = kwargs["number_of_jobs"]
-    start_a = d / 2
-    stop_a = 5
-    step_a = abs(start_a - stop_a) / job_count
-    jobs = []
-
-    for job_num in range(job_count):
-        coordinates = []
-        a = step_a * job_num + start_a
-
-        first_coordinate = np.array([0, 0, 0])
-        second_coordinate = np.array(first_coordinate + [d, 0, 0])
-
-        third_coordinate = np.array(second_coordinate + [a, 0, 0])
-        fourth_coordinate = np.array(third_coordinate + [d, 0, 0])
-
-        coordinates = np.array(
-            [
-                first_coordinate,
-                second_coordinate,
-                third_coordinate,
-                fourth_coordinate,
-            ]
-        )
-
-        geometry = DataGenerator.generate_geometry_string(coordinates)
-        edges = generate_min_local_distance_edges(coordinates)
-
-        guess = DataGenerator.generate_initial_guess_from_edges(
-            vertices=coordinates, edges=edges
-        )
-        guess = guess.T
-
-        edge_distances = [
-            np.linalg.norm(coordinates[edge[0]] - coordinates[edge[1]])
-            for edge in edges
-        ]
-
-        # fully connected graph, all distances
-        coordinate_distances = [
-            [np.linalg.norm(other - coordinate) for other in coordinates]
-            for coordinate in coordinates
-        ]
-
-        job = Job(
-            geometry=geometry,
-            edges=edges,
-            guess=guess,
-            coordinates=coordinates,
-            edge_distances=edge_distances,
-            coordinate_distances=coordinate_distances,
-        )
-        jobs.append(job)
-    return jobs
-
-
 def _import_custom_method(path: Path) -> Callable:
     # append module to path
     sys.path.append(str(path.parent))
@@ -526,15 +368,6 @@ def main():
         "number_of_atoms", type=int, help="number of atoms (even number)"
     )
     parser.add_argument("number_of_jobs", type=int, help="number of jobs to generate")
-
-    # TODO: currently not working due to structure changes, this still needs some refactoring
-    # parser.add_argument(
-    #     "--custom_job_generator",
-    #     type=str,
-    #     choices=["v1", "v2"],
-    #     required=False,
-    #     help="choose a custom job generator with different heuristics for H4 evaluation",
-    # )
 
     parser.add_argument(
         "--method",
@@ -611,12 +444,6 @@ def main():
     number_of_jobs = args.number_of_jobs
 
     job_generator = DataGenerator.generate_jobs
-
-    # if args.custom_job_generator:
-    #     if args.custom_job_generator == "v1":
-    #         job_generator = custom_generate_jobs_v1
-    #     elif args.custom_job_generator == "v2":
-    #         job_generator = custom_generate_jobs_v2
 
     jobs = job_generator(
         number_of_atoms=number_of_atoms,
