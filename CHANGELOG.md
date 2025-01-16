@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.3.0](https://github.com/nylser/quanti-gin/compare/v2.2.0...v2.3.0) (2025-01-16)
+
+
+### Features
+
+* update minimum distance for random job generation and add parallel job execution ([6937c95](https://github.com/nylser/quanti-gin/commit/6937c95a6a987ec50086caf5f4bd5cc1e64d2afb))
+
+
+### Bug Fixes
+
+* remove dependencies that are only required for execution ([d20d142](https://github.com/nylser/quanti-gin/commit/d20d1424e461f3bc59f90b4209aae9b0e2ed10c9))
+* remove test job data & update dependencies ([de535f8](https://github.com/nylser/quanti-gin/commit/de535f8fdccf8f8a9288fdeeb5108c4c543d41f7))
+
 ## [2.2.0](https://github.com/nylser/quanti-gin/compare/v2.1.0...v2.2.0) (2024-10-25)
 
 
