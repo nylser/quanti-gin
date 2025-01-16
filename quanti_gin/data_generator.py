@@ -168,6 +168,18 @@ class DataGenerator:
             custom_data=None,
         )
 
+    # TODO: add method to calculate the fidelity between two methods
+    @classmethod
+    def calculate_fidelity(cls, molecule: QuantumChemistryBase, method1: OptimizationResult, method2: OptimizationResult):
+        method1_orbitals = method1["orbital_coefficients"]
+        method2_orbitals = method2["orbital_coefficients"]
+
+        inner_prod = np.matmul(method1_orbitals.T, method2_orbitals)
+        fidelities = np.abs(inner_prod) ** 2
+
+        return fidelities
+
+
     @classmethod
     def generate_jobs(
         cls,
@@ -177,6 +189,7 @@ class DataGenerator:
         method="spa",
         custom_method=None,
         compare_to=[],
+        # TODO: add parameter for fidelity between methods
     ):
         def get_algorithm_from_method(method) -> Callable:
             if callable(method):
@@ -232,6 +245,7 @@ class DataGenerator:
                         coordinates=coordinates,
                         optimization_algorithm=get_algorithm_from_method(compare),
                         custom_job_data=custom_job_data,
+                        # TODO: put here fidelity between the methods
                     )
                     jobs.append(job)
 
