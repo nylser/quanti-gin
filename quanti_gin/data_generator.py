@@ -131,8 +131,7 @@ class DataGenerator:
         return OptimizationResult(
             energy=molecule.compute_energy("fci"),
             orbital_coefficients=molecule.integral_manager.orbital_coefficients,
-            # no need to transform the orbitals, we are using the orbitals
-            orbital_transformation=np.eye(molecule.n_orbitals),
+            orbital_transformation=None,
             variables=None,
             custom_data=None,
         )
