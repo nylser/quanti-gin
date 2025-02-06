@@ -38,6 +38,7 @@ class CustomData(TypedDict):
 class OptimizationResult(TypedDict):
     energy: float
     orbital_coefficients: NDArray | None
+    orbital_transformation: NDArray | None
     variables: dict | None
     custom_data: Sequence[CustomData] | None
 
@@ -130,6 +131,7 @@ class DataGenerator:
         return OptimizationResult(
             energy=molecule.compute_energy("fci"),
             orbital_coefficients=molecule.integral_manager.orbital_coefficients,
+            orbital_transformation=None,
             variables=None,
             custom_data=None,
         )
@@ -161,6 +163,7 @@ class DataGenerator:
         return OptimizationResult(
             energy=result.energy,
             orbital_coefficients=opt.molecule.integral_manager.orbital_coefficients,
+            orbital_transformation=opt.mo_coeff,
             variables=result.variables,
             custom_data=None,
         )
