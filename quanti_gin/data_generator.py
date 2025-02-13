@@ -149,6 +149,8 @@ class DataGenerator:
             orbital_transformation=None,
             variables=None,
             custom_data=None,
+            hamiltonian=None,
+            circuit=None
         )
 
     @classmethod
