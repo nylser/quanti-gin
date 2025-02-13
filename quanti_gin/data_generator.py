@@ -231,6 +231,18 @@ class DataGenerator:
 
             custom_job_data = []
 
+            def get_ground_state(geometry, basis_set="sto-3g"):
+                mol = tq.Molecule(geometry=geometry, basis_set=basis_set)
+
+                H = mol.make_hamiltonian().to_openfermion()
+                H_sparse = of.linalg.get_sparse_operator(H)
+                v, vv = scipy.sparse.linalg.eigsh(H_sparse, sigma=mol.compute_energy("fci"))
+                wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
+
+                return wfn
+
+            fidelity_flag = calculate_fidelity and method != "fci"
+
             if custom_method:
                 job = Job(
                     id=i,
