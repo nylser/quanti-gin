@@ -493,6 +493,14 @@ def main():
     )
 
     parser.add_argument(
+        "--fidelity",
+        "-F",
+        action="store_true",
+        default=False,
+        help="calculate the fidelity between the true ground state and the optimized state",
+    )
+
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -524,6 +532,7 @@ def main():
         method=args.method,
         custom_method=opt_method,
         compare_to=args.compare_to,
+        calculate_fidelity=args.fidelity,
     )
 
     job_results = []
