@@ -177,12 +177,15 @@ class DataGenerator:
 
         E = tq.ExpectationValue(H=H, U=U)
         result = tq.minimize(E, silent=True)
+
         return OptimizationResult(
             energy=result.energy,
             orbital_coefficients=opt.molecule.integral_manager.orbital_coefficients,
             orbital_transformation=opt.mo_coeff,
             variables=result.variables,
             custom_data=None,
+            hamiltonian=H,
+            circuit=U
         )
 
     # TODO: add method to calculate the fidelity between two methods
