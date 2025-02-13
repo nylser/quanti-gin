@@ -339,7 +339,6 @@ class DataGenerator:
 
 
         # apply custom data to data frame
-        for i, result in enumerate(job_results):
         for i, entry in enumerate(job_results):
             result = entry["result"]
             if "custom_data" not in result:
