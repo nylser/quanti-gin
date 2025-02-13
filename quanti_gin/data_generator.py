@@ -188,17 +188,13 @@ class DataGenerator:
             circuit=U
         )
 
-    # TODO: add method to calculate the fidelity between two methods
+    # TODO: add method to calculate the fidelity between each iteration of the optimization
     @classmethod
-    def calculate_fidelity(cls, molecule: QuantumChemistryBase, method1: OptimizationResult, method2: OptimizationResult):
-        method1_orbitals = method1["orbital_coefficients"]
-        method2_orbitals = method2["orbital_coefficients"]
+    def calculate_fidelity(cls, true_state, optimized_state):
+        inner_product = true_state.inner(optimized_state)
+        fidelity = abs(inner_product) ** 2
 
-        inner_prod = np.matmul(method1_orbitals.T, method2_orbitals)
-        fidelities = np.abs(inner_prod) ** 2
-
-        return fidelities
-
+        return fidelity
 
     @classmethod
     def generate_jobs(
