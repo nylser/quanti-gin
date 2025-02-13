@@ -205,7 +205,7 @@ class DataGenerator:
         method="spa",
         custom_method=None,
         compare_to=[],
-        # TODO: add parameter for fidelity between methods
+        calculate_fidelity=False, # parameter for fidelity between methods
     ):
         def get_algorithm_from_method(method) -> Callable:
             if callable(method):
