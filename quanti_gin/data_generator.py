@@ -282,9 +282,27 @@ class DataGenerator:
     @classmethod
     def execute_job(cls, job: Job, basis_set="sto-3g"):
         mol = tq.Molecule(geometry=job.geometry, basis_set=basis_set)
-        return job.optimization_algorithm(
+
+        result = job.optimization_algorithm(
             mol, coordinates=job.coordinates, **job.kwargs
         )
+
+        if "hamiltonian" in result and "circuit" in result:
+            # compute true ground state
+            H = result["hamiltonian"].to_openfermion()
+            U = result["circuit"]
+
+            H_sparse = of.linalg.get_sparse_operator(H)
+            v, vv = scipy.sparse.linalg.eigsh(H_sparse, sigma=mol.compute_energy("fci"))
+            wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
+
+            # compute fidelity
+            fidelity = cls.calculate_fidelity(wfn, job.ground_state)
+            return {"result": result, "fidelity": fidelity}
+        else:
+            return {"result": result, "fidelity": None}
+
+
 
     @classmethod
     def create_result_df(
