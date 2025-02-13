@@ -312,7 +312,7 @@ class DataGenerator:
 
     @classmethod
     def create_result_df(
-        cls, jobs: Sequence[Job], job_results: Sequence[OptimizationResult]
+        cls, jobs: Sequence[Job], job_results: Sequence[dict[str, Any]]
     ) -> pd.DataFrame:
         max_variable_count = max(
             [0]
@@ -329,15 +329,19 @@ class DataGenerator:
                     f"{job.optimization_algorithm.__module__}.{job.optimization_algorithm.__name__}"
                     for job in jobs
                 ],
-                "optimized_energy": [result["energy"] for result in job_results],
+                "optimized_energy": [entry["result"]["energy"] for entry in job_results],
+                "fidelity": [entry["fidelity"] for entry in job_results],
                 "optimized_variable_count": max_variable_count,
                 "atom_count": [len(job.coordinates) for job in jobs],
                 "edge_count": [len(job.coordinates) // 2 for job in jobs],
             }
         )
 
+
         # apply custom data to data frame
         for i, result in enumerate(job_results):
+        for i, entry in enumerate(job_results):
+            result = entry["result"]
             if "custom_data" not in result:
                 continue
             custom_data = result["custom_data"]
