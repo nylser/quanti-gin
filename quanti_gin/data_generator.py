@@ -250,6 +250,8 @@ class DataGenerator:
                     coordinates=coordinates,
                     optimization_algorithm=custom_method,
                     custom_job_data=custom_job_data,
+                    ground_state=get_ground_state(geometry), # custom arguments for ground state -> ground state is the same even for different methods
+                    calculate_fidelity=fidelity_flag
                 )
                 jobs.append(job)
             else:
@@ -259,6 +261,8 @@ class DataGenerator:
                     coordinates=coordinates,
                     optimization_algorithm=get_algorithm_from_method(method),
                     custom_job_data=custom_job_data,
+                    ground_state=get_ground_state(geometry), # custom arguments for ground state -> ground state is the same even for different methods
+                    calculate_fidelity=fidelity_flag
                 )
                 jobs.append(job)
 
@@ -267,13 +271,15 @@ class DataGenerator:
                     # do not duplicate methods
                     if compare == method and not custom_method:
                         continue
+                    fidelity_flag = calculate_fidelity and compare != "fci"
                     job = Job(
                         id=i,
                         geometry=geometry,
                         coordinates=coordinates,
                         optimization_algorithm=get_algorithm_from_method(compare),
                         custom_job_data=custom_job_data,
-                        # TODO: put here fidelity between the methods
+                        ground_state=get_ground_state(geometry), # custom arguments for ground state -> ground state is the same even for different methods
+                        calculate_fidelity=fidelity_flag
                     )
                     jobs.append(job)
 
