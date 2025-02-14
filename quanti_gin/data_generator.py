@@ -162,7 +162,7 @@ class DataGenerator:
             edges=edges, vertices=coordinates
         ).T
 
-        U = molecule.make_ansatz(name="HCB-SPA", edges=edges)
+        U = molecule.make_ansatz(name="HCB-SPA", edges=edges) # harcore boson Circuit
 
         opt = tq.chemistry.optimize_orbitals(
             molecule.use_native_orbitals(),
@@ -178,6 +178,8 @@ class DataGenerator:
         E = tq.ExpectationValue(H=H, U=U)
         result = tq.minimize(E, silent=True)
 
+        U_x = mol.hcb_to_me(U)
+
         return OptimizationResult(
             energy=result.energy,
             orbital_coefficients=opt.molecule.integral_manager.orbital_coefficients,
@@ -185,7 +187,7 @@ class DataGenerator:
             variables=result.variables,
             custom_data=None,
             hamiltonian=H,
-            circuit=U
+            circuit=U_x
         )
 
     # TODO: add method to calculate the fidelity between each iteration of the optimization
