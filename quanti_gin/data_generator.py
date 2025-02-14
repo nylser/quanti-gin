@@ -297,15 +297,18 @@ class DataGenerator:
 
         if "hamiltonian" in result and "circuit" in result:
             # compute true ground state
-            H = result["hamiltonian"].to_openfermion()
+            optimized_variables = result["variables"]
             U = result["circuit"]
 
+            state = tq.simulate(U, optimized_variables)
+
+            H = result["hamiltonian"].to_openfermion()
             H_sparse = of.linalg.get_sparse_operator(H)
             v, vv = scipy.sparse.linalg.eigsh(H_sparse, sigma=mol.compute_energy("fci"))
             wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
 
             # compute fidelity
-            fidelity = cls.calculate_fidelity(wfn, job.ground_state)
+            fidelity = cls.calculate_fidelity(state, job.ground_state)
             return {"result": result, "fidelity": fidelity}
         else:
             return {"result": result, "fidelity": None}
