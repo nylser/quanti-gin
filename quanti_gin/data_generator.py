@@ -184,7 +184,6 @@ class DataGenerator:
             orbital_transformation=opt.mo_coeff,
             variables=result.variables,
             custom_data=None,
-            hamiltonian=H,
             circuit=U_x
         )
 
