@@ -236,6 +236,8 @@ class DataGenerator:
                 H = mol.make_hamiltonian().to_openfermion()
                 H_sparse = of.linalg.get_sparse_operator(H)
                 v, vv = scipy.sparse.linalg.eigsh(H_sparse, sigma=mol.compute_energy("fci"))
+                # Add test if v is the same as fci
+                # print(f"error: {fci - v[0]}") # check
                 wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
 
                 return wfn
@@ -292,21 +294,17 @@ class DataGenerator:
             mol, coordinates=job.coordinates, **job.kwargs
         )
 
-        if "hamiltonian" in result and "circuit" in result:
-            # compute true ground state
-            optimized_variables = result["variables"]
-            U = result["circuit"]
+        if job.calculate_fidelity:
+            if "circuit" in result:
+                # compute true ground state
+                optimized_variables = result["variables"]
+                U = result["circuit"]
 
-            state = tq.simulate(U, optimized_variables)
+                state = tq.simulate(U, optimized_variables)
 
-            H = result["hamiltonian"].to_openfermion()
-            H_sparse = of.linalg.get_sparse_operator(H)
-            v, vv = scipy.sparse.linalg.eigsh(H_sparse, sigma=mol.compute_energy("fci"))
-            wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
-
-            # compute fidelity
-            fidelity = cls.calculate_fidelity(state, job.ground_state)
-            return {"result": result, "fidelity": fidelity}
+                # compute fidelity
+                fidelity = cls.calculate_fidelity(state, job.ground_state)
+                return {"result": result, "fidelity": fidelity}
         else:
             return {"result": result, "fidelity": None}
 
