@@ -47,7 +47,6 @@ class OptimizationResult(TypedDict):
     orbital_coefficients: NDArray | None
     orbital_transformation: NDArray | None
     variables: dict | None
-    hamiltonian: Any | None
     circuit: Any | None
     custom_data: Sequence[CustomData] | None
 
@@ -149,7 +148,6 @@ class DataGenerator:
             orbital_transformation=None,
             variables=None,
             custom_data=None,
-            hamiltonian=None,
             circuit=None
         )
 
