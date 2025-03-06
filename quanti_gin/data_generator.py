@@ -94,9 +94,9 @@ class DataGenerator:
         for i in range(1, count):
             prev_coord = np_random.choice(coordinates)
             min_distance = 0
-            new_distance = 0.5 + np_random.random() * max_distance
             # make sure we have a minimum of 0.5 angstrom between the atom cores
             while min_distance <= 0.5:
+                new_distance = 0.5 + np_random.random() * max_distance
                 # generate a random point with exactly new_distance distance from origin
                 new_vec = np_random.random(3)
                 new_vec /= np.linalg.norm(new_vec, axis=0)
