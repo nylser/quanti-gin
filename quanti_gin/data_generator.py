@@ -64,9 +64,6 @@ class Job:
     # custom optimization algorithm
     custom_job_data: Sequence[CustomData] = field(default_factory=list)
 
-    # custom data for the ground state
-    ground_state: Any = None
-
     # Flag to determine whether fidelity should be calculated
     calculate_fidelity: bool = False
 
