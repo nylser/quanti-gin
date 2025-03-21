@@ -186,7 +186,19 @@ class DataGenerator:
             custom_data=None
         )
 
-    # TODO: add method to calculate the fidelity between each iteration of the optimization
+    @classmethod
+    def get_ground_state(cls, molecule):
+        mol = molecule
+
+        H = mol.make_hamiltonian().to_openfermion()
+        H_sparse = of.linalg.get_sparse_operator(H)
+        v, vv = scipy.sparse.linalg.eigsh(H_sparse, sigma=mol.compute_energy("fci"))
+        # Add test if v is the same as fci
+        # print(f"error: {fci - v[0]}") # check
+        wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
+        # TODO: Need to rewrite function so it takes the higher wfns too
+        return wfn
+
     @classmethod
     def calculate_fidelity(cls, true_state, optimized_state):
         inner_product = true_state.inner(optimized_state)
@@ -228,18 +240,6 @@ class DataGenerator:
             geometry = cls.generate_geometry_string(coordinates)
 
             custom_job_data = []
-
-            def get_ground_state(geometry, basis_set="sto-3g"):
-                mol = tq.Molecule(geometry=geometry, basis_set=basis_set)
-
-                H = mol.make_hamiltonian().to_openfermion()
-                H_sparse = of.linalg.get_sparse_operator(H)
-                v, vv = scipy.sparse.linalg.eigsh(H_sparse, sigma=mol.compute_energy("fci"))
-                # Add test if v is the same as fci
-                # print(f"error: {fci - v[0]}") # check
-                wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
-
-                return wfn
 
             fidelity_flag = calculate_fidelity and method != "fci"
 
