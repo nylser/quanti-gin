@@ -142,7 +142,7 @@ class DataGenerator:
             orbital_transformation=None,
             variables=None,
             custom_data=None,
-            circuit=None
+            circuit=None,
         )
 
     @classmethod
@@ -154,7 +154,7 @@ class DataGenerator:
             edges=edges, vertices=coordinates
         ).T
 
-        U = molecule.make_ansatz(name="HCB-SPA", edges=edges) # Hardcore Boson Circuit
+        U = molecule.make_ansatz(name="HCB-SPA", edges=edges)  # Hardcore Boson Circuit
 
         opt = tq.chemistry.optimize_orbitals(
             molecule.use_native_orbitals(),
@@ -179,7 +179,7 @@ class DataGenerator:
             variables=result.variables,
             circuit=U_x,
             molecule=mol,
-            custom_data=None
+            custom_data=None,
         )
 
     @classmethod
@@ -187,7 +187,9 @@ class DataGenerator:
 
         H = molecule.make_hamiltonian().to_openfermion()
         H_sparse = of.linalg.get_sparse_operator(H)
-        v, vv = scipy.sparse.linalg.eigsh(H_sparse, k=num_states, ncv=100, sigma=molecule.compute_energy("fci"))
+        v, vv = scipy.sparse.linalg.eigsh(
+            H_sparse, k=num_states, ncv=100, sigma=molecule.compute_energy("fci")
+        )
 
         wfns = [tq.QubitWaveFunction.from_array(vv[:, i]) for i in range(num_states)]
         energies = v.tolist()
@@ -210,7 +212,7 @@ class DataGenerator:
         method="spa",
         custom_method=None,
         compare_to=[],
-        calculate_fidelity=False, # parameter for fidelity between methods
+        calculate_fidelity=False,  # parameter for fidelity between methods
     ):
         def get_algorithm_from_method(method) -> Callable:
             if callable(method):
@@ -245,7 +247,7 @@ class DataGenerator:
                     coordinates=coordinates,
                     optimization_algorithm=custom_method,
                     custom_job_data=custom_job_data,
-                    calculate_fidelity=fidelity_flag
+                    calculate_fidelity=fidelity_flag,
                 )
                 jobs.append(job)
             else:
@@ -255,7 +257,7 @@ class DataGenerator:
                     coordinates=coordinates,
                     optimization_algorithm=get_algorithm_from_method(method),
                     custom_job_data=custom_job_data,
-                    calculate_fidelity=fidelity_flag
+                    calculate_fidelity=fidelity_flag,
                 )
                 jobs.append(job)
 
@@ -271,7 +273,7 @@ class DataGenerator:
                         coordinates=coordinates,
                         optimization_algorithm=get_algorithm_from_method(compare),
                         custom_job_data=custom_job_data,
-                        calculate_fidelity=fidelity_flag
+                        calculate_fidelity=fidelity_flag,
                     )
                     jobs.append(job)
 
@@ -287,7 +289,7 @@ class DataGenerator:
 
         if job.calculate_fidelity:
             if "circuit" in result:
-                mol = result["molecule"] # use same molecule as in the optimization
+                mol = result["molecule"]  # use same molecule as in the optimization
                 optimized_variables = result["variables"]
                 U = result["circuit"]
 
@@ -311,8 +313,6 @@ class DataGenerator:
         else:
             return {"result": result, "fidelity": None}
 
-
-
     @classmethod
     def create_result_df(
         cls, jobs: Sequence[Job], job_results: Sequence[dict[str, Any]]
@@ -332,14 +332,15 @@ class DataGenerator:
                     f"{job.optimization_algorithm.__module__}.{job.optimization_algorithm.__name__}"
                     for job in jobs
                 ],
-                "optimized_energy": [entry["result"]["energy"] for entry in job_results],
+                "optimized_energy": [
+                    entry["result"]["energy"] for entry in job_results
+                ],
                 "fidelity": [entry["fidelity"] for entry in job_results],
                 "optimized_variable_count": max_variable_count,
                 "atom_count": [len(job.coordinates) for job in jobs],
                 "edge_count": [len(job.coordinates) // 2 for job in jobs],
             }
         )
-
 
         # apply custom data to data frame
         for i, entry in enumerate(job_results):
@@ -528,8 +529,12 @@ def main():
 
     job_generator = DataGenerator.generate_jobs
 
-    if number_of_atoms >= 10 and args.fidelity==True:
-        warnings.warn("The calculations may be very slow due to the high number of atoms and high fidelity setting.", UserWarning, 2)
+    if number_of_atoms >= 10 and args.fidelity == True:
+        warnings.warn(
+            "The calculations may be very slow due to the high number of atoms and high fidelity setting.",
+            UserWarning,
+            2,
+        )
 
     jobs = job_generator(
         number_of_atoms=number_of_atoms,
