@@ -4,6 +4,7 @@ import importlib
 import logging
 import multiprocessing
 import sys
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
@@ -528,6 +529,9 @@ def main():
     number_of_jobs = args.number_of_jobs
 
     job_generator = DataGenerator.generate_jobs
+
+    if number_of_atoms >= 10 and args.fidelity==True:
+        warnings.warn("The calculations may be very slow due to the high number of atoms and high fidelity setting.", UserWarning, 2)
 
     jobs = job_generator(
         number_of_atoms=number_of_atoms,
