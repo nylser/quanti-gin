@@ -292,14 +292,26 @@ class DataGenerator:
 
         if job.calculate_fidelity:
             if "circuit" in result:
-                # compute true ground state
+                mol = result["molecule"] # use same molecule as in the optimization
                 optimized_variables = result["variables"]
                 U = result["circuit"]
-
+                # ---- need to delete later
+                print(U)
+                H = mol.make_hamiltonian()
+                E = tq.ExpectationValue(U=U, H=H)
+                # ---
                 state = tq.simulate(U, optimized_variables)
+                print()
+                print("molecule encoding circuit energy:", tq.simulate(E, optimized_variables))
+                print("hcb-circuit energy", result["energy"])
+                print("state", state)
 
                 # compute fidelity
-                fidelity = cls.calculate_fidelity(state, job.ground_state)
+                # TODO: maybe rewrite these two lines so we get the degenerate cases
+                ground_state = cls.get_ground_state(mol)
+                fidelity = cls.calculate_fidelity(state, ground_state)
+                print("fidelity:", fidelity)
+                print()
                 return {"result": result, "fidelity": fidelity}
         else:
             return {"result": result, "fidelity": None}
