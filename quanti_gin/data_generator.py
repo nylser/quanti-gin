@@ -48,6 +48,7 @@ class OptimizationResult(TypedDict):
     orbital_transformation: NDArray | None
     variables: dict | None
     circuit: Any | None
+    molecule: Any | None
     custom_data: Sequence[CustomData] | None
 
 
