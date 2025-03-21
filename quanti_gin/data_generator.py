@@ -184,11 +184,10 @@ class DataGenerator:
 
     @classmethod
     def get_ground_states(cls, molecule, num_states=10):
-        mol = molecule
 
-        H = mol.make_hamiltonian().to_openfermion()
+        H = molecule.make_hamiltonian().to_openfermion()
         H_sparse = of.linalg.get_sparse_operator(H)
-        v, vv = scipy.sparse.linalg.eigsh(H_sparse, k=num_states, ncv=100, sigma=mol.compute_energy("fci"))
+        v, vv = scipy.sparse.linalg.eigsh(H_sparse, k=num_states, ncv=100, sigma=molecule.compute_energy("fci"))
 
         wfns = [tq.QubitWaveFunction.from_array(vv[:, i]) for i in range(num_states)]
         energies = v.tolist()
@@ -300,7 +299,6 @@ class DataGenerator:
 
                 while k < len(wfns) - 1:
                     fidelity += cls.calculate_fidelity(state, wfns[k])
-                    print(fidelity)
                     if fidelity < 1e-6:
                         k += 1
                         continue
