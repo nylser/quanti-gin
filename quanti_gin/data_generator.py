@@ -187,17 +187,17 @@ class DataGenerator:
         )
 
     @classmethod
-    def get_ground_state(cls, molecule):
+    def get_ground_states(cls, molecule, num_states=10):
         mol = molecule
 
         H = mol.make_hamiltonian().to_openfermion()
         H_sparse = of.linalg.get_sparse_operator(H)
-        v, vv = scipy.sparse.linalg.eigsh(H_sparse, sigma=mol.compute_energy("fci"))
-        # Add test if v is the same as fci
-        # print(f"error: {fci - v[0]}") # check
-        wfn = tq.QubitWaveFunction.from_array(vv[:, 0])
-        # TODO: Need to rewrite function so it takes the higher wfns too
-        return wfn
+        v, vv = scipy.sparse.linalg.eigsh(H_sparse, k=num_states, ncv=100, sigma=mol.compute_energy("fci"))
+
+        wfns = [tq.QubitWaveFunction.from_array(vv[:, i]) for i in range(num_states)]
+        energies = v.tolist()
+
+        return wfns, energies
 
     @classmethod
     def calculate_fidelity(cls, true_state, optimized_state):
@@ -295,23 +295,24 @@ class DataGenerator:
                 mol = result["molecule"] # use same molecule as in the optimization
                 optimized_variables = result["variables"]
                 U = result["circuit"]
-                # ---- need to delete later
-                print(U)
-                H = mol.make_hamiltonian()
-                E = tq.ExpectationValue(U=U, H=H)
-                # ---
-                state = tq.simulate(U, optimized_variables)
-                print()
-                print("molecule encoding circuit energy:", tq.simulate(E, optimized_variables))
-                print("hcb-circuit energy", result["energy"])
-                print("state", state)
 
-                # compute fidelity
-                # TODO: maybe rewrite these two lines so we get the degenerate cases
-                ground_state = cls.get_ground_state(mol)
-                fidelity = cls.calculate_fidelity(state, ground_state)
-                print("fidelity:", fidelity)
-                print()
+                state = tq.simulate(U, optimized_variables)
+
+                wfns, energies = cls.get_ground_states(molecule=mol)
+                fidelity = 0.0
+                k = 0
+
+                while k < len(wfns) - 1:
+                    fidelity += cls.calculate_fidelity(state, wfns[k])
+                    print(fidelity)
+                    if fidelity < 1e-6:
+                        k += 1
+                        continue
+                    if abs(energies[k] - energies[k + 1]) < 1e-6:
+                        break
+
+                    k += 1
+
                 return {"result": result, "fidelity": fidelity}
         else:
             return {"result": result, "fidelity": None}
