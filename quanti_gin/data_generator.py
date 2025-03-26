@@ -531,7 +531,7 @@ def main():
 
     if number_of_atoms >= 10 and args.fidelity == True:
         warnings.warn(
-            "The calculations may be very slow due to the high number of atoms and high fidelity setting.",
+            "The calculations may be very slow due to the high number of atoms, and enabled fidelity calculation .",
             UserWarning,
             2,
         )
