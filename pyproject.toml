@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "quanti-gin"
-version = "2.4.0"
+version = "2.5.0"
 description = "A customizable data generator for quantum simulation"
 authors = ["Korbinian Stein <kstein@inforbi.de>"]
 license = "MIT"

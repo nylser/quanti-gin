@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.5.0](https://github.com/nylser/quanti-gin/compare/v2.4.0...v2.5.0) (2025-03-26)
+
+
+### Features
+
+* calculate fidelity ([#28](https://github.com/nylser/quanti-gin/issues/28)) ([0092a84](https://github.com/nylser/quanti-gin/commit/0092a841ca7c59492e27a3d1146a94a4b5c280e0))
+
 ## [2.4.0](https://github.com/nylser/quanti-gin/compare/v2.3.0...v2.4.0) (2025-02-06)
 
 
