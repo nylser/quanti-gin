@@ -2,15 +2,18 @@
 import argparse
 import importlib
 import logging
-import sys
 import multiprocessing
+import sys
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
-from typing import Callable, Sequence, TypedDict
+from typing import Any, Callable, Sequence, TypedDict
 
 import numpy as np
+import openfermion as of
 import pandas as pd
+import scipy
 import tequila as tq
 from numpy import eye, floating
 from numpy.typing import NDArray
@@ -40,6 +43,8 @@ class OptimizationResult(TypedDict):
     orbital_coefficients: NDArray | None
     orbital_transformation: NDArray | None
     variables: dict | None
+    circuit: Any | None
+    molecule: Any | None
     custom_data: Sequence[CustomData] | None
 
 
@@ -54,6 +59,9 @@ class Job:
     coordinate_distances: Sequence[floating] = field(default_factory=list)
     # custom optimization algorithm
     custom_job_data: Sequence[CustomData] = field(default_factory=list)
+
+    # Flag to determine whether fidelity should be calculated
+    calculate_fidelity: bool = False
 
     # custom arguments that one might want to pass to the optimization execution
     kwargs: dict = field(default_factory=dict)
@@ -134,6 +142,7 @@ class DataGenerator:
             orbital_transformation=None,
             variables=None,
             custom_data=None,
+            circuit=None,
         )
 
     @classmethod
@@ -145,7 +154,7 @@ class DataGenerator:
             edges=edges, vertices=coordinates
         ).T
 
-        U = molecule.make_ansatz(name="HCB-SPA", edges=edges)
+        U = molecule.make_ansatz(name="HCB-SPA", edges=edges)  # Hardcore Boson Circuit
 
         opt = tq.chemistry.optimize_orbitals(
             molecule.use_native_orbitals(),
@@ -160,13 +169,39 @@ class DataGenerator:
 
         E = tq.ExpectationValue(H=H, U=U)
         result = tq.minimize(E, silent=True)
+
+        U_x = mol.hcb_to_me(U)
+
         return OptimizationResult(
             energy=result.energy,
             orbital_coefficients=opt.molecule.integral_manager.orbital_coefficients,
             orbital_transformation=opt.mo_coeff,
             variables=result.variables,
+            circuit=U_x,
+            molecule=mol,
             custom_data=None,
         )
+
+    @classmethod
+    def get_ground_states(cls, molecule, num_states=10):
+
+        H = molecule.make_hamiltonian().to_openfermion()
+        H_sparse = of.linalg.get_sparse_operator(H)
+        v, vv = scipy.sparse.linalg.eigsh(
+            H_sparse, k=num_states, ncv=100, sigma=molecule.compute_energy("fci")
+        )
+
+        wfns = [tq.QubitWaveFunction.from_array(vv[:, i]) for i in range(num_states)]
+        energies = v.tolist()
+
+        return wfns, energies
+
+    @classmethod
+    def calculate_fidelity(cls, true_state, optimized_state):
+        inner_product = true_state.inner(optimized_state)
+        fidelity = abs(inner_product) ** 2
+
+        return fidelity
 
     @classmethod
     def generate_jobs(
@@ -177,6 +212,7 @@ class DataGenerator:
         method="spa",
         custom_method=None,
         compare_to=[],
+        calculate_fidelity=False,  # parameter for fidelity between methods
     ):
         def get_algorithm_from_method(method) -> Callable:
             if callable(method):
@@ -202,6 +238,8 @@ class DataGenerator:
 
             custom_job_data = []
 
+            fidelity_flag = calculate_fidelity and method != "fci"
+
             if custom_method:
                 job = Job(
                     id=i,
@@ -209,6 +247,7 @@ class DataGenerator:
                     coordinates=coordinates,
                     optimization_algorithm=custom_method,
                     custom_job_data=custom_job_data,
+                    calculate_fidelity=fidelity_flag,
                 )
                 jobs.append(job)
             else:
@@ -218,6 +257,7 @@ class DataGenerator:
                     coordinates=coordinates,
                     optimization_algorithm=get_algorithm_from_method(method),
                     custom_job_data=custom_job_data,
+                    calculate_fidelity=fidelity_flag,
                 )
                 jobs.append(job)
 
@@ -226,12 +266,14 @@ class DataGenerator:
                     # do not duplicate methods
                     if compare == method and not custom_method:
                         continue
+                    fidelity_flag = calculate_fidelity and compare != "fci"
                     job = Job(
                         id=i,
                         geometry=geometry,
                         coordinates=coordinates,
                         optimization_algorithm=get_algorithm_from_method(compare),
                         custom_job_data=custom_job_data,
+                        calculate_fidelity=fidelity_flag,
                     )
                     jobs.append(job)
 
@@ -240,13 +282,40 @@ class DataGenerator:
     @classmethod
     def execute_job(cls, job: Job, basis_set="sto-3g"):
         mol = tq.Molecule(geometry=job.geometry, basis_set=basis_set)
-        return job.optimization_algorithm(
+
+        result = job.optimization_algorithm(
             mol, coordinates=job.coordinates, **job.kwargs
         )
 
+        if job.calculate_fidelity:
+            if "circuit" in result:
+                mol = result["molecule"]  # use same molecule as in the optimization
+                optimized_variables = result["variables"]
+                U = result["circuit"]
+
+                state = tq.simulate(U, optimized_variables)
+
+                wfns, energies = cls.get_ground_states(molecule=mol)
+                fidelity = 0.0
+                k = 0
+
+                while k < len(wfns) - 1:
+                    fidelity += cls.calculate_fidelity(state, wfns[k])
+                    if fidelity < 1e-6:
+                        k += 1
+                        continue
+                    if abs(energies[k] - energies[k + 1]) < 1e-6:
+                        break
+
+                    k += 1
+
+                return {"result": result, "fidelity": fidelity}
+        else:
+            return {"result": result, "fidelity": None}
+
     @classmethod
     def create_result_df(
-        cls, jobs: Sequence[Job], job_results: Sequence[OptimizationResult]
+        cls, jobs: Sequence[Job], job_results: Sequence[dict[str, Any]]
     ) -> pd.DataFrame:
         max_variable_count = max(
             [0]
@@ -263,7 +332,10 @@ class DataGenerator:
                     f"{job.optimization_algorithm.__module__}.{job.optimization_algorithm.__name__}"
                     for job in jobs
                 ],
-                "optimized_energy": [result["energy"] for result in job_results],
+                "optimized_energy": [
+                    entry["result"]["energy"] for entry in job_results
+                ],
+                "fidelity": [entry["fidelity"] for entry in job_results],
                 "optimized_variable_count": max_variable_count,
                 "atom_count": [len(job.coordinates) for job in jobs],
                 "edge_count": [len(job.coordinates) // 2 for job in jobs],
@@ -271,7 +343,8 @@ class DataGenerator:
         )
 
         # apply custom data to data frame
-        for i, result in enumerate(job_results):
+        for i, entry in enumerate(job_results):
+            result = entry["result"]
             if "custom_data" not in result:
                 continue
             custom_data = result["custom_data"]
@@ -424,6 +497,14 @@ def main():
     )
 
     parser.add_argument(
+        "--fidelity",
+        "-F",
+        action="store_true",
+        default=False,
+        help="calculate the fidelity between the true ground state and the optimized state",
+    )
+
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -448,6 +529,13 @@ def main():
 
     job_generator = DataGenerator.generate_jobs
 
+    if number_of_atoms >= 10 and args.fidelity == True:
+        warnings.warn(
+            "The calculations may be very slow due to the high number of atoms, and enabled fidelity calculation .",
+            UserWarning,
+            2,
+        )
+
     jobs = job_generator(
         number_of_atoms=number_of_atoms,
         number_of_jobs=number_of_jobs,
@@ -455,6 +543,7 @@ def main():
         method=args.method,
         custom_method=opt_method,
         compare_to=args.compare_to,
+        calculate_fidelity=args.fidelity,
     )
 
     job_results = []
