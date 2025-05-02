@@ -28,13 +28,13 @@ If you want to learn about more parameters you can use help:
 ## Customize the data generator
 
 quanti-gin is designed so it can be easily customized with your heuristics for data generation.
-You can create your own version by simply subclassing the `quanti_gin.DataGenerator` class.
+You can create your own version by simply implementing your own optimization method based on the ones found in quanti-gin itself.
 
-A full example of this can be found in [examples/customized_generator.py](quanti_gin/examples/customized_generator.py).
+A full example of this can be found in [examples/custom_method.py](quanti_gin/examples/custom_method.py).
 
 You can run the example code by executing:
 
-    python -m quanti_gin.examples.customized_generator
+    python -m quanti_gin --custom-method quanti_gin/examples/custom_method.py
 
 ## Documentation and Visualization notebook
 
